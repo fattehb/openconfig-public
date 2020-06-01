@@ -1,25 +1,30 @@
 {
-  "name": "dist",
-  "version": "0.0.1",
-  "description": "",
-  "main": "index.js",
-  "dependencies": {
-    "axios": "^0.19.2",
-    "https": "^1.0.0",
-    "typescript": "^3.7.5",
-    "yang-js": "^0.23.1",
-    "yang-parser": "^0.2.1"
-  },
-  "devDependencies": {
-    "@types/node": "^13.13.4",
-    "eslint": "^6.8.0",
-    "eslint-plugin-prettier": "^3.1.2"
-  },
-  "scripts": {
-    "build": "",
-    "test": "nyc mocha --recursive './test/mocha/*.js'",
-    "start": "functions-framework --target=main"
-  },
-  "author": "",
-  "license": "ISC"
+    "name": "dist",
+    "version": "0.0.1",
+    "description": "",
+    "main": "index.js",
+    "dependencies": {
+        "@grpc/proto-loader": "^0.5.4",
+        "axios": "^0.19.2",
+        "grpc": "^1.24.2",
+        "https": "^1.0.0",
+        "typescript": "^3.7.5",
+        "yang-js": "^0.23.1",
+        "yang-parser": "^0.2.1"
+    },
+    "devDependencies": {
+        "@types/node": "^13.13.4",
+        "eslint": "^6.8.0",
+        "eslint-plugin-prettier": "^3.1.2"
+    },
+    "scripts": {
+        "build": "",
+        "test": "nyc mocha --recursive './test/mocha/*.js'",
+        "start": "functions-framework --target=main"
+    },
+    "author": "",
+    "license": "ISC",
+    "models": {
+        "my-module": "/home/jcripps/Documents/git/openconfig/fortigate-openconfig/public/release/models/interfaces/openconfig-interfaces.yang"
+    }
 }
