@@ -3,11 +3,8 @@ var Yang = require('yang-js');
 import { FortiGateAPIRequests } from './fortigateApiRequests';
 import { GnmiProtoHandlers } from './GnmiProtoHandlers';
 
-import https from 'https';
-import http from 'http';
-import * as fs from 'fs';
 const listenOnPort = 6031;
-const tls = require('tls');
+
 var grpc = require('grpc');
 var protoLoader = require('@grpc/proto-loader');
 var PROTO_PATH = __dirname + '/gnmi/proto/gnmi/gnmi.proto';
@@ -22,7 +19,11 @@ var packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 });
 var hello_proto = grpc.loadPackageDefinition(packageDefinition).gnmi;
 const { FORTIGATE_API_KEY, FORTIGATE_IP, POLL_INTERVAL } = process.env;
-
+const importTest = Yang.import('../public/third_party/ietf/ietf-interfaces.yang');
+const openconfig_yang_types_model = Yang.import('../public/release/models/types/openconfig-yang-types.yang');
+const openconfig_type_model = Yang.import('../public/release/models/types/openconfig-types.yang');
+const openconfig_extensions_model = Yang.import('../public/release/models/openconfig-extensions.yang');
+const openconfig_interfaces_model = Yang.import('../public/release/models/interfaces/openconfig-interfaces.yang');
 exports.main = async (context, req, res): Promise<void> => {
     console.log('Function Started');
     let yangImportList = [
@@ -32,26 +33,50 @@ exports.main = async (context, req, res): Promise<void> => {
         '../public/release/models/openconfig-extensions.yang',
         '../public/release/models/interfaces/openconfig-interfaces.yang'
     ];
-    //TODO: look into importing in JSON file. The following does not create a refernceable model.
+
     for (let i in yangImportList) {
         var imports = Yang.import(i);
         console.log(`importing: ${yangImportList[i]}`);
     }
-    // Must be imported in the correct order.
-    const importTest = Yang.import('../public/third_party/ietf/ietf-interfaces.yang');
-    const openconfig_yang_types_model = Yang.import('../public/release/models/types/openconfig-yang-types.yang');
-    const openconfig_type_model = Yang.import('../public/release/models/types/openconfig-types.yang');
-    const openconfig_extensions_model = Yang.import('../public/release/models/openconfig-extensions.yang');
-    const openconfig_iterfances_model = Yang.import('../public/release/models/interfaces/openconfig-interfaces.yang');
+    console.log('*************Tests******************');
+    var model = Yang.parse('container foo { leaf a { type uint8; } }');
+    var obj1 = model.eval({ foo: { a: 7 } });
+    var getter = obj1.foo.get('a');
+    console.log('getter', getter);
+    console.log('objA', obj1.foo.a);
+    console.log('obj1 ', obj1);
+    ///openconfig-interfaces:interfaces/interface/name
+    let obj = openconfig_interfaces_model.eval({
+        'openconfig-interfaces:interfaces': {
+            interface: [
+                {
+                    name: 'port1',
+                    config: {
+                        name: 'port1',
+                        type: 'IF_ETHERNET'
+                    }
+                }
+            ]
+        }
+    });
+    //console.log(JSON.stringify(openconfig_interfaces_model));
+    console.log('obj', JSON.stringify(obj));
 
-    const schema = Yang(openconfig_iterfances_model);
+    let getAttrubute = obj.get('/interfaces/interface/name');
+    console.log('getAttribute: ', getAttrubute);
+    //let addtoOpenconfig = openconfig_interfaces_model['openconfig-interfaces'].interfaces.interface.get('name');
+    //console.log('addtoOpenConfig ', addtoOpenconfig);
 
-    var schema = Yang.parse();
+    console.log('schema', openconfig_interfaces_model);
+    console.log('*************END TESTS *****************');
+    //console.log(JSON.stringify(schema));
+    // let networkData = importTest.eval(data);
+    //console.log(networkData);
 
     //console.log(model);
-    //console.log(schema);
+    //console.log(schema_);
     const openConfigInterpreter = new OpenConfigInterpreter(5000, FORTIGATE_IP, FORTIGATE_API_KEY);
-    const gRPCServiceHandler = new GnmiProtoHandlers(5000, FORTIGATE_IP, FORTIGATE_API_KEY);
+    const gRPCServiceHandler = new GnmiProtoHandlers();
     //let getInterface = await openConfigInterpreter.pollFortigate('/api/v2/cmdb/system/interface');
     //let postInterface = await openConfigInterpreter.postConfig('/api/v2/cmdb/system/interface');
 
@@ -104,19 +129,134 @@ export class OpenConfigInterpreter {
         console.log('called putInterface');
     }
 
-    public translatePath(pathRequest) {
-        //TODO:
-        let fullPath;
+    public async translatePath(pathRequest) {
+        //TODO:Normalize data:
+
+        console.log('pathRequest', JSON.stringify(pathRequest));
+        let fullPath = '';
+        //SUbscribe shows as:
+        //for (const item of pathRequest.path.elem) {
+        //Get
+        for (const item of pathRequest.path[0].elem) {
+            fullPath = fullPath + item.name + '/';
+            //TODO account for multiple names etc:
+            // if (item.key && item.key.key) {
+            //     fullPath = fullPath + '[' + item.key.value + ']';
+            // }
+            console.log('item ' + JSON.stringify(item));
+        }
         //TODO:seperate for get/set/sub
         console.log('Path Request' + JSON.stringify(pathRequest));
         //Assume sub ATM
-        if (pathRequest.elem[0].name === 'interfaces') {
-            //TODO: error check.
-            let cmdbPath = '/api/v2/cmdb/system/interface/';
-            let interfaceValue = pathRequest.elem[1].key.name;
-            fullPath = cmdbPath + interfaceValue;
-        }
+        // if (pathRequest.elem[0].name === 'interfaces') {
+        //     //TODO: error check.
+        //     let cmdbPath = '/api/v2/cmdb/system/interface/';
+        //     let interfaceValue = pathRequest.elem[1].key.name;
+        //     fullPath = cmdbPath + interfaceValue;
+        // }
         console.log(`Constructed RestAPI Path: ${fullPath}`);
+        switch (fullPath) {
+            case 'interfaces/interface/':
+                let cmdbPath = '/api/v2/cmdb/system/interface/';
+                let monitorPath = '/api/v2/monitor/system/interface/';
+                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+                let interfaceNameValue = pathRequest.path[0].elem[1].key.name;
+                let fullPath = cmdbPath + interfaceNameValue;
+                let data = '';
+                let getRequest = await this.getRequest(fullPath, data);
+                let getMontiorRequest = await this.getRequest(monitorPath, {
+                    interface_name: interfaceNameValue
+                });
+                let monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                console.log(JSON.stringify(monitorInterface));
+                console.log('FortiGate Rest Response: ' + JSON.stringify(getMontiorRequest));
+
+                //Convert Data
+                let configObj = openconfig_interfaces_model.eval(
+                    {
+                        'openconfig-interfaces:interfaces': {
+                            interface: [
+                                {
+                                    name: getRequest.results[0].name,
+                                    config: {
+                                        name: getRequest.results[0].name,
+                                        type: 'IF_ETHERNET',
+                                        mtu: getRequest.results[0].mtu
+                                    }
+
+                                    // state: {
+                                    //     type: 'IF_ETHERNET'
+                                    // }
+                                }
+                            ]
+                        }
+                    },
+                    null
+                );
+                let configObjtoJSON = configObj.toJSON();
+                console.log(
+                    'config object items ' + configObjtoJSON['openconfig-interfaces:interfaces'].interface[0].name
+                );
+                console.log('configObject' + JSON.stringify(configObj.toJSON()));
+                let readOnlyData = {
+                    state: {
+                        name: getRequest.results[0].name,
+                        type: 'IF_ETHERNET',
+                        mtu: getRequest.results[0].mtu,
+                        'loopback-mode': false,
+                        description: getRequest.results[0].description,
+                        enabled: getRequest.results[0].status === 'up' ? true : false,
+                        ifindex: getRequest.results[0].status.vindex,
+                        'admin-status': getRequest.results[0].status === 'up' ? 'UP' : 'DOWN',
+                        'oper-status': getRequest.results[0].status === 'up' ? 'UP' : 'DOWN',
+                        //logical TODO:look into this.
+                        counters: {
+                            //in-octets:
+                            'in-pkts': monitorInterface.rx_packets,
+                            //"in-unicast-pkts":
+                            //"in-broadcast-pkts":
+                            //"in-multicast-pkts":
+                            //"in-discards":
+                            'in-errors': monitorInterface.rx_errors,
+                            //"in-unknown-protos":
+                            //"in-fcs-errors":
+                            //"out-octets":
+                            'out-pkts': monitorInterface.tx_packets,
+                            //"out-unicast-pkts":
+                            //"out-broadcast-pkts":
+                            //"out-multicast-pkts":
+                            //"out-discards":
+                            'out-errors': monitorInterface.tx_errors
+                            //"carrier-transitions":
+                            //"last-clear":
+                        }
+                    }
+                };
+                configObjtoJSON['openconfig-interfaces:interfaces'].interface[0].state = readOnlyData;
+                console.log('CONFIGOBJECT COMBINED ' + JSON.stringify(configObjtoJSON));
+                let combinedObj = {
+                    'openconfig-interfaces:interfaces': configObjtoJSON['openconfig-interfaces:interfaces'],
+                    state: readOnlyData.state
+                };
+                console.log(JSON.stringify(combinedObj));
+                return combinedObj;
+
+            case 'interfaces/interface/state/':
+                console.log('state');
+                break;
+            case 'interfaces/interface/state/counters/':
+                console.log('counters');
+                break;
+            case 'interfaces/interface/subinterfaces/':
+                console.log('subinterfaces');
+                break;
+            case 'interfaces/interface/hold-time/':
+                console.log('Path not implmented yet');
+                break;
+            default:
+                console.log('Path not implmented yet');
+                break;
+        }
 
         return fullPath;
     }
@@ -158,7 +298,62 @@ export class OpenConfigInterpreter {
     public ConvertRestToYang(modelType, config) {
         //TODO: convert to own class structure
         //Only works with interface for now
+
+        console.log('ModelType: ' + JSON.stringify(modelType));
+        if (modelType.elem[0].name == 'interfaces') {
+            console.log('interface selected in ConvertRestToYang');
+            let type;
+            //TODO:
+            if (config.results[0].type == 'physical') {
+                let type = 'IF_ETHERNET';
+            } else {
+                type = 'IF_ETHERNET';
+            }
+            //Currently assume interface was recieved.
+            let obj = openconfig_interfaces_model.eval(
+                {
+                    'openconfig-interfaces:interfaces': {
+                        interface: [
+                            {
+                                name: config.results[0].name,
+                                config: {
+                                    name: config.results[0].name,
+                                    type: 'IF_ETHERNET',
+                                    mtu: config.results[0].mtu
+                                }
+                                // state: {
+                                //     type: 'IF_ETHERNET'
+                                // }
+                            }
+                        ]
+                    }
+                },
+                null
+            );
+            //currently broke:
+            // let obj = openconfig_interfaces_model.validate({
+            //     'openconfig-interfaces:interfaces': {
+            //         interface: [
+            //             {
+            //                 name: config.results[0].name,
+            //                 config: {
+            //                     name: config.results[0].name,
+            //                     type: 'IF_ETHERNET',
+            //                     mtu: config.results[0].mtu
+            //                 },
+            //                 state: {
+            //                     type: 'IF_ETHERNET'
+            //                 }
+            //             }
+            //         ]
+            //     }
+            // });
+            console.log(obj);
+            return obj.toJSON();
+        }
     }
+    //Validated function is for non-config data, i.e readonly
+    public convertResttoYang_Validate(modelType, data) {}
 }
 
 if (module === require.main) {
