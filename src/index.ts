@@ -19,25 +19,45 @@ var packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 });
 var hello_proto = grpc.loadPackageDefinition(packageDefinition).gnmi;
 const { FORTIGATE_API_KEY, FORTIGATE_IP, POLL_INTERVAL } = process.env;
-const importTest = Yang.import('../public/third_party/ietf/ietf-interfaces.yang');
-const openconfig_yang_types_model = Yang.import('../public/release/models/types/openconfig-yang-types.yang');
-const openconfig_type_model = Yang.import('../public/release/models/types/openconfig-types.yang');
-const openconfig_extensions_model = Yang.import('../public/release/models/openconfig-extensions.yang');
-const openconfig_interfaces_model = Yang.import('../public/release/models/interfaces/openconfig-interfaces.yang');
+const importTest = Yang.import(
+    '/home/jcripps/Documents/git/openconfig/fortigate-openconfig/public/third_party/ietf/ietf-interfaces.yang'
+);
+const openconfig_yang_types_model = Yang.import(
+    '/home/jcripps/Documents/git/openconfig/fortigate-openconfig/public/release/models/types/openconfig-yang-types.yang'
+);
+const openconfig_type_model = Yang.import(
+    '/home/jcripps/Documents/git/openconfig/fortigate-openconfig/public/release/models/types/openconfig-types.yang'
+);
+const openconfig_extensions_model = Yang.import(
+    '/home/jcripps/Documents/git/openconfig/fortigate-openconfig/public/release/models/openconfig-extensions.yang'
+);
+const openconfig_interfaces_model = Yang.import(
+    '/home/jcripps/Documents/git/openconfig/fortigate-openconfig/public/release/models/interfaces/openconfig-interfaces.yang'
+);
+
 exports.main = async (context, req, res): Promise<void> => {
     console.log('Function Started');
     let yangImportList = [
-        '../public/third_party/ietf/ietf-interfaces.yang',
-        '../public/release/models/types/openconfig-yang-types.yang',
-        '../public/release/models/types/openconfig-types.yang',
-        '../public/release/models/openconfig-extensions.yang',
-        '../public/release/models/interfaces/openconfig-interfaces.yang'
+        '/home/jcripps/Documents/git/openconfig/fortigate-openconfig/public/third_party/ietf/ietf-interfaces.yang',
+        '/home/jcripps/Documents/git/openconfig/fortigate-openconfig/public/release/models/types/openconfig-yang-types.yang',
+        '/home/jcripps/Documents/git/openconfig/fortigate-openconfig/public/release/models/types/openconfig-types.yang',
+        '/home/jcripps/Documents/git/openconfig/fortigate-openconfig/public/release/models/openconfig-extensions.yang',
+        '/home/jcripps/Documents/git/openconfig/fortigate-openconfig/public/release/models/interfaces/openconfig-interfaces.yang'
     ];
 
     for (let i in yangImportList) {
         var imports = Yang.import(i);
         console.log(`importing: ${yangImportList[i]}`);
     }
+
+    //   const data =
+    //var testInterfaceData = {"element":[],"elem":[{"key":{},"name":"interfaces"},{"key":{"name":"port1"},"name":"interface"}],"origin":"","target":""}
+    // const schema = Yang(openconfig_iterfances_model);
+    // let schema_ = Yang.parse(schema).bind({
+    //     '[module:openconfig-interfaces]': 'getinterface',
+    //     '/oc-if:interfaces/oc-if:interface/oc-if:name': 'TestnNme'
+    // });
+
     console.log('*************Tests******************');
     var model = Yang.parse('container foo { leaf a { type uint8; } }');
     var obj1 = model.eval({ foo: { a: 7 } });
@@ -58,6 +78,24 @@ exports.main = async (context, req, res): Promise<void> => {
                 }
             ]
         }
+
+        // path: {
+        //     element: [],
+        //     elem: [
+        //         {
+        //             key: {},
+        //             name: 'interfaces'
+        //         },
+        //         {
+        //             key: {
+        //                 name: 'port1'
+        //             },
+        //             name: 'interface'
+        //         }
+        //     ],
+        //     origin: '',
+        //     target: ''
+        // }
     });
     //console.log(JSON.stringify(openconfig_interfaces_model));
     console.log('obj', JSON.stringify(obj));
@@ -131,9 +169,17 @@ export class OpenConfigInterpreter {
 
     public async translatePath(pathRequest) {
         //TODO:Normalize data:
+        var cmdbPath;
+        var monitorPath;
+        //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+        var interfaceNameValue;
+        var data;
+        var getRequest;
+        var getMontiorRequest;
+        var monitorInterface;
+        var readOnlyData;
 
-        console.log('pathRequest', JSON.stringify(pathRequest));
-        let fullPath = '';
+        var fullPath = '';
         //SUbscribe shows as:
         //for (const item of pathRequest.path.elem) {
         //Get
@@ -157,17 +203,17 @@ export class OpenConfigInterpreter {
         console.log(`Constructed RestAPI Path: ${fullPath}`);
         switch (fullPath) {
             case 'interfaces/interface/':
-                let cmdbPath = '/api/v2/cmdb/system/interface/';
-                let monitorPath = '/api/v2/monitor/system/interface/';
+                cmdbPath = '/api/v2/cmdb/system/interface/';
+                monitorPath = '/api/v2/monitor/system/interface/';
                 //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
-                let interfaceNameValue = pathRequest.path[0].elem[1].key.name;
-                let fullPath = cmdbPath + interfaceNameValue;
-                let data = '';
-                let getRequest = await this.getRequest(fullPath, data);
-                let getMontiorRequest = await this.getRequest(monitorPath, {
+                interfaceNameValue = pathRequest.path[0].elem[1].key.name;
+                fullPath = cmdbPath + interfaceNameValue;
+                data = '';
+                getRequest = await this.getRequest(fullPath, data);
+                getMontiorRequest = await this.getRequest(monitorPath, {
                     interface_name: interfaceNameValue
                 });
-                let monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                monitorInterface = getMontiorRequest.results[interfaceNameValue];
                 console.log(JSON.stringify(monitorInterface));
                 console.log('FortiGate Rest Response: ' + JSON.stringify(getMontiorRequest));
 
@@ -183,10 +229,6 @@ export class OpenConfigInterpreter {
                                         type: 'IF_ETHERNET',
                                         mtu: getRequest.results[0].mtu
                                     }
-
-                                    // state: {
-                                    //     type: 'IF_ETHERNET'
-                                    // }
                                 }
                             ]
                         }
@@ -242,11 +284,137 @@ export class OpenConfigInterpreter {
                 return combinedObj;
 
             case 'interfaces/interface/state/':
-                console.log('state');
-                break;
+                cmdbPath = '/api/v2/cmdb/system/interface/';
+                monitorPath = '/api/v2/monitor/system/interface/';
+                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+                interfaceNameValue = pathRequest.path[0].elem[1].key.name;
+                fullPath = cmdbPath + interfaceNameValue;
+                data = '';
+                getRequest = await this.getRequest(fullPath, data);
+                getMontiorRequest = await this.getRequest(monitorPath, {
+                    interface_name: interfaceNameValue
+                });
+                monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                let stateData = {
+                    state: {
+                        name: getRequest.results[0].name,
+                        type: 'IF_ETHERNET',
+                        mtu: getRequest.results[0].mtu,
+                        'loopback-mode': false,
+                        description: getRequest.results[0].description,
+                        enabled: getRequest.results[0].status === 'up' ? true : false,
+                        ifindex: getRequest.results[0].status.vindex,
+                        'admin-status': getRequest.results[0].status === 'up' ? 'UP' : 'DOWN',
+                        'oper-status': getRequest.results[0].status === 'up' ? 'UP' : 'DOWN',
+                        //logical TODO:look into this.
+                        counters: {
+                            //in-octets:
+                            'in-pkts': monitorInterface.rx_packets,
+                            //"in-unicast-pkts":
+                            //"in-broadcast-pkts":
+                            //"in-multicast-pkts":
+                            //"in-discards":
+                            'in-errors': monitorInterface.rx_errors,
+                            //"in-unknown-protos":
+                            //"in-fcs-errors":
+                            //"out-octets":
+                            'out-pkts': monitorInterface.tx_packets,
+                            //"out-unicast-pkts":
+                            //"out-broadcast-pkts":
+                            //"out-multicast-pkts":
+                            //"out-discards":
+                            'out-errors': monitorInterface.tx_errors
+                            //"carrier-transitions":
+                            //"last-clear":
+                        }
+                    }
+                };
+
+                return stateData;
+
             case 'interfaces/interface/state/counters/':
-                console.log('counters');
-                break;
+                cmdbPath = '/api/v2/cmdb/system/interface/';
+                monitorPath = '/api/v2/monitor/system/interface/';
+                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+                interfaceNameValue = pathRequest.path[0].elem[1].key.name;
+                fullPath = cmdbPath + interfaceNameValue;
+                data = '';
+                getRequest = await this.getRequest(fullPath, data);
+                getMontiorRequest = await this.getRequest(monitorPath, {
+                    interface_name: interfaceNameValue
+                });
+                monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                let counterData = {
+                    counters: {
+                        //in-octets:
+                        'in-pkts': monitorInterface.rx_packets,
+                        //"in-unicast-pkts":
+                        //"in-broadcast-pkts":
+                        //"in-multicast-pkts":
+                        //"in-discards":
+                        'in-errors': monitorInterface.rx_errors,
+                        //"in-unknown-protos":
+                        //"in-fcs-errors":
+                        //"out-octets":
+                        'out-pkts': monitorInterface.tx_packets,
+                        //"out-unicast-pkts":
+                        //"out-broadcast-pkts":
+                        //"out-multicast-pkts":
+                        //"out-discards":
+                        'out-errors': monitorInterface.tx_errors
+                        //"carrier-transitions":
+                        //"last-clear":
+                    }
+                };
+                return counterData;
+            case 'interfaces/interface/state/counters/in-pkts/':
+                monitorPath = '/api/v2/monitor/system/interface/';
+                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+                interfaceNameValue = pathRequest.path[0].elem[1].key.name;
+                getMontiorRequest = await this.getRequest(monitorPath, {
+                    interface_name: interfaceNameValue
+                });
+                monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                let inPackets = {
+                    'in-pkts': monitorInterface.rx_packets
+                };
+                return inPackets;
+            case 'interfaces/interface/state/counters/in-errors/':
+                monitorPath = '/api/v2/monitor/system/interface/';
+                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+                interfaceNameValue = pathRequest.path[0].elem[1].key.name;
+                getMontiorRequest = await this.getRequest(monitorPath, {
+                    interface_name: interfaceNameValue
+                });
+                monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                let inErrors = {
+                    'in-errors': monitorInterface.rx_errors
+                };
+                return inErrors;
+            case 'interfaces/interface/state/counters/out-pkts/':
+                monitorPath = '/api/v2/monitor/system/interface/';
+                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+                interfaceNameValue = pathRequest.path[0].elem[1].key.name;
+                getMontiorRequest = await this.getRequest(monitorPath, {
+                    interface_name: interfaceNameValue
+                });
+                monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                let outPkts = {
+                    'out-pkts': monitorInterface.tx_packets
+                };
+                return outPkts;
+            case 'interfaces/interface/state/counters/out-errors/':
+                monitorPath = '/api/v2/monitor/system/interface/';
+                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+                interfaceNameValue = pathRequest.path[0].elem[1].key.name;
+                getMontiorRequest = await this.getRequest(monitorPath, {
+                    interface_name: interfaceNameValue
+                });
+                monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                let outErrors = {
+                    'out-errors': monitorInterface.tx_errors
+                };
+                return outErrors;
             case 'interfaces/interface/subinterfaces/':
                 console.log('subinterfaces');
                 break;
