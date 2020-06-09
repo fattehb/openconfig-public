@@ -154,33 +154,58 @@ export class OpenConfigInterpreter {
 
                 //This means that we must create an interface type, based on the name:
                 let interfaceType;
-                // text.toLowerCase();
-                // var n = str.includes('world');
-                if (interfaceNameValue.toLowerCase().includes('loopback')) {
-                    console.log('LOopbackstatus: true');
-                    interfaceType = 'loopback';
+
+                const acceptedInterfaceTypes = ['physical', 'loopback'];
+                // 'aggregate', 'redundant', 'tunnel', 'loopback'];
+
+                // Try it where we expect a match
+                TODO: for (let i of acceptedInterfaceTypes) {
+                    if (interfaceNameValue.toLowerCase().includes(i)) {
+                        interfaceType = i;
+                        console.log(`Assuming interface type: ${i}`);
+                    }
                 }
+                if (interfaceType === null) {
+                    //TODO: needs to be sent to the gNMI client instead.
+                    const err = new Error(`
+                    Could not determine interfacetype from name ${interfaceNameValue}. Current accepted types are:
+                    physical loopback
+                    `);
+                    console.error(err.message);
+                    throw err;
+                }
+
                 cmdbPath = '/api/v2/cmdb/system/interface/';
-
-                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
                 fullPath = cmdbPath;
-
                 data = {
                     name: interfaceNameValue,
                     vdom: 'root',
                     type: interfaceType
                 };
-                console.log(JSON.stringify(data));
+                console.log('Post Data' + JSON.stringify(data));
                 postRequest = await this.postConfig(fullPath, data);
+
                 return postRequest;
-            case 'interfaces/interface/config/description/':
+            case 'interfaces/interface/config/enabled/':
                 cmdbPath = '/api/v2/cmdb/system/interface/';
 
                 //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
                 fullPath = cmdbPath + interfaceNameValue;
                 data = {
                     name: interfaceNameValue,
-                    description: postValue
+                    status: postValue === true ? 'up' : 'down'
+                };
+
+                postRequest = await this.putConfig(fullPath, data);
+                return postRequest;
+            case 'interfaces/interface/config/mtu/':
+                cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+                fullPath = cmdbPath + interfaceNameValue;
+                data = {
+                    name: interfaceNameValue,
+                    mtu: postValue
                 };
 
                 postRequest = await this.putConfig(fullPath, data);

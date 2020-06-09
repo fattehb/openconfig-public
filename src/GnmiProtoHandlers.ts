@@ -8,53 +8,48 @@ const { FORTIGATE_API_KEY, FORTIGATE_IP } = process.env;
 
 export class GnmiProtoHandlers {
     //TODO:clean up constructors.
-    private POLL_INTERVAL: number; //milliseconds
-    private FORTIGATE_IP: string;
-    private FORTIGATE_API_KEY: string;
-    private API_KEY: string;
-
-    constructor(POLL_INTERVAL: number, FORTIGATE_IP: string, FORTIGATE_API_KEY: string) {
-        this.POLL_INTERVAL = POLL_INTERVAL; //milliseconds
-        this.FORTIGATE_IP = FORTIGATE_IP;
-        this.FORTIGATE_API_KEY = FORTIGATE_API_KEY;
-    }
     //Naming Based of gnmi.proto
     public async Set(setRequest, callback) {
         console.log('set request prefix: ', JSON.stringify(setRequest));
         let fullPath = '/';
         let value;
         let operationValue;
-        //TODO: must look for allinstances of update
-        if (setRequest.request.update[0].val.value === 'string_val') {
-            //TODO: must search for replace/delete/update
-            value = setRequest.request.update[0].val.string_val;
-        } else if (setRequest.request.update[0].val.value === 'int_val') {
-            value = setRequest.request.update[0].val.string_val;
+        if (setRequest.request.update.length > 1) {
+            operationValue = 'UPDATE';
         }
+        // //TODO: must look for allinstances of update
+        // if (setRequest.request.update[0].val.value === 'string_val') {
+        //     //TODO: must search for replace/delete/update
+        //     value = setRequest.request.update[0].val.string_val;
+        // } else if (setRequest.request.update[0].val.value === 'int_val') {
+        //     value = setRequest.request.update[0].val.string_val;
+        // }
 
-        for (const item of setRequest.request.update[0].path.elem) {
-            fullPath = fullPath + item.name + '/';
-            console.log('item ' + JSON.stringify(item));
-        }
-        let data = 'testData';
+        // for (const item of setRequest.request.update[0].path.elem) {
+        //     fullPath = fullPath + item.name + '/';
+        //     console.log('item ' + JSON.stringify(item));
+        // }
+
+        let data = ' ';
         //TODO: provide generic function to build this JSON
         //TODO: error handling return.
         // Named to correspond to GNMI specs.
         let setConfig = new OpenConfigInterpreter(5000, FORTIGATE_IP, FORTIGATE_API_KEY);
-        let putRequest = await setConfig.putConfig(fullPath, data);
-        console.log(putRequest);
+        //let putRequest = await setConfig.putConfig(fullPath, data);
+        let setModel = setConfig.setModelRequests(setRequest.request);
+        console.log('SetModel Return' + JSON.stringify(setModel));
         let SetResponse = {
             timeStamp: Date.now(),
             prefix: {
-                apath: fullPath
+                path: setRequest.request.update[0].path
             },
-            UpdateResult: {
-                Operation: operationValue,
-                // deprecated timeStamp: Date.now(),
-                path: { pathKey: fullPath },
-                op: operationValue
-            },
-            returnMessage: putRequest
+            response: [
+                {
+                    // deprecated timeStamp: Date.now(),
+                    path: { pathKey: fullPath },
+                    op: 'UPDATE' //Indicates success
+                }
+            ]
         };
         callback(null, SetResponse);
         // const openConfigInterpreter = new OpenConfigInterpreter(5000, FORTIGATE_IP, FORTIGATE_API_KEY);
@@ -88,29 +83,22 @@ export class GnmiProtoHandlers {
         //     console.log('item ' + JSON.stringify(item));
         // }
 
-        let translatedPath = getConfig.translatePath(GetRequest.request.path[0].elem);
-        let data = 'testData';
-        let getRequest = await getConfig.getRequest(translatedPath, data);
-        console.log(getRequest);
-        //TODO: construct notifications as a generic type.
-
+        let translatedPath = await getConfig.translatePath(GetRequest.request);
         let GetResponse = {
             notification: [
                 {
                     timeStamp: Date.now(),
                     prefix: {
-                        apath: fullPath
+                        path: fullPath
                     },
-                    alias: 'alias?',
                     update: [
                         {
                             //TODO: Pathkey
                             path: { pathKey: 'TODO' },
 
                             val: {
-                                string_val: JSON.stringify(getRequest)
+                                string_val: JSON.stringify(translatedPath)
                             },
-
                             duplicates: 0
                         }
                     ],
@@ -130,24 +118,29 @@ export class GnmiProtoHandlers {
             console.log(JSON.stringify(note));
             for (const item of note.subscribe.subscription[0].path.elem) {
                 fullPath = fullPath + item.name + '/';
+                //TODO account for multiple names etc:
+                // if (item.key && item.key.key) {
+                //     fullPath = fullPath + '[' + item.key.value + ']';
+                // }
                 console.log('item ' + JSON.stringify(item));
             }
-            let translatedPath = getConfig.translatePath(note.subscribe.subscription[0].path);
+
             let pollCount = 0;
             let pollFor = 10;
             let tempTime = Date.now();
             while (pollCount < pollFor) {
                 let currentTime = Date.now();
-                // console.log('CurrentTime:', currentTime);
-                // console.log('TempTime:', tempTime);
                 if (currentTime > tempTime + 5000) {
                     console.log('true');
                     tempTime = Date.now();
                     pollCount++;
-                    let getRequest = await getConfig.pollFortigate(translatedPath, '');
-                    let restConfigtoYang = getConfig.ConvertRestToYang(note.subscribe.subscription[0].path, getRequest);
+                    //let getRequest = await getConfig.pollFortigate(translatedPath, '');
+                    //console.log('FortiGate Rest Response: ' + JSON.stringify(getRequest));
+                    //let restConfigtoYang = getConfig.ConvertRestToYang(note.subscribe.subscription[0].path, getRequest);
                     //console.log('get Request ' + JSON.stringify(getRequest));
-                    console.log('Rest to yang', restConfigtoYang);
+                    //console.log('Rest to yang', JSON.stringify(restConfigtoYang));
+                    //TODO: convert to Response format before returing from restConfigtoYang
+                    let translatedPath = await getConfig.translatePath(note.subscribe);
                     let SubscribeResponse = {
                         update: {
                             timeStamp: Date.now(),
@@ -155,13 +148,14 @@ export class GnmiProtoHandlers {
                                 elem: note.subscribe.subscription[0].path.elem
                             },
                             alias: fullPath,
+
                             update: [
                                 {
                                     //TODO: Pathkey
                                     path: { pathKey: note.subscribe.subscription[0].path },
 
                                     val: {
-                                        string_val: 'DummyStatusValue'
+                                        string_val: JSON.stringify(translatedPath)
                                     },
 
                                     duplicates: 0
