@@ -110,7 +110,100 @@ export class OpenConfigInterpreter {
         console.log('called putInterface');
     }
     // Set requests have been split out due to the nature in which they are evaluated and set.
-    public async setModelRequests(pathRequest) {}
+    public async setModelRequests(pathRequest) {
+        var fullPath = '',
+            interfaceNameValue,
+            cmdbPath,
+            data,
+            getRequest,
+            postRequest,
+            typeValue,
+            postValue;
+        console.log('pathrequest for set ' + JSON.stringify(pathRequest));
+        if (pathRequest?.update) {
+            interfaceNameValue = pathRequest.update[0].path.elem[1].key.name;
+            // Value presented by the gNMI
+            // Value wil be int_val/string_val etc. Can easily tell which, by grabbing value
+            typeValue = pathRequest.update[0].val.value;
+            postValue = pathRequest.update[0].val[typeValue];
+            console.log('postvalue ' + postValue);
+            console.log('Set Update Request');
+            //Construct the path
+            for (const item of pathRequest.update[0].path.elem) {
+                //TODO: account for multiple names etc:
+                fullPath = fullPath + item.name + '/';
+            }
+            console.log(fullPath);
+        }
+        switch (fullPath) {
+            case 'interfaces/interface/':
+                // From the yang docs:
+                // "The type of the interface.
+
+                // When an interface entry is created, a server MAY
+                // initialize the type leaf with a valid value, e.g., if it
+                // is possible to derive the type from the name of the
+                // interface.
+
+                // If a client tries to set the type of an interface to a
+                // value that can never be used by the system, e.g., if the
+                // type is not supported or if the type does not match the
+                // name of the interface, the server MUST reject the request.
+                // A NETCONF server MUST reply with an rpc-error with the
+                // error-tag 'invalid-value' in this case.";
+
+                //This means that we must create an interface type, based on the name:
+                let interfaceType;
+                // text.toLowerCase();
+                // var n = str.includes('world');
+                if (interfaceNameValue.toLowerCase().includes('loopback')) {
+                    console.log('LOopbackstatus: true');
+                    interfaceType = 'loopback';
+                }
+                cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+                fullPath = cmdbPath;
+
+                data = {
+                    name: interfaceNameValue,
+                    vdom: 'root',
+                    type: interfaceType
+                };
+                console.log(JSON.stringify(data));
+                postRequest = await this.postConfig(fullPath, data);
+                return postRequest;
+            case 'interfaces/interface/config/description/':
+                cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+                fullPath = cmdbPath + interfaceNameValue;
+                data = {
+                    name: interfaceNameValue,
+                    description: postValue
+                };
+
+                postRequest = await this.putConfig(fullPath, data);
+                return postRequest;
+            case 'interfaces/interface/config/description/':
+                cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+                fullPath = cmdbPath + interfaceNameValue;
+                data = {
+                    name: interfaceNameValue,
+                    description: postValue
+                };
+
+                postRequest = await this.putConfig(fullPath, data);
+
+                return postRequest;
+            default:
+                console.log('Path not implmented yet');
+                return -1;
+        }
+    }
+
     public async translatePath(pathRequest) {
         //TODO:Normalize data,
         //TODO: accept multiple values for interface etc
