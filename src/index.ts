@@ -249,6 +249,8 @@ export class OpenConfigInterpreter {
         var uptime;
         var readOnlyData;
         var getUptimeRequest;
+        var transformConfigtoJSON;
+        var configObj;
 
         var fullPath = '';
         console.log('Path Request' + JSON.stringify(pathRequest));
@@ -309,7 +311,7 @@ export class OpenConfigInterpreter {
                 console.log('FortiGate Rest Response: ' + JSON.stringify(getMontiorRequest));
 
                 //Convert Data
-                let configObj = openconfig_interfaces_model.eval(
+                configObj = openconfig_interfaces_model.eval(
                     {
                         'openconfig-interfaces:interfaces': {
                             interface: [
@@ -373,6 +375,90 @@ export class OpenConfigInterpreter {
                 };
                 console.log('Combined Data' + JSON.stringify(combinedObj));
                 return combinedObj;
+
+            // Return evaluated config.
+            case 'interfaces/interface/config/':
+                cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                fullPath = cmdbPath + interfaceNameValue;
+                data = '';
+                getRequest = await this.getRequest(fullPath, data);
+
+                //Convert Data
+                let configValues = openconfig_interfaces_model.eval(
+                    {
+                        'openconfig-interfaces:interfaces': {
+                            interface: [
+                                {
+                                    name: getRequest.results[0].name,
+                                    config: {
+                                        name: getRequest.results[0].name,
+                                        type: 'IF_ETHERNET',
+                                        mtu: getRequest.results[0].mtu
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    null
+                );
+                let configValuestoJSON = configValues.toJSON();
+                return configValuestoJSON['openconfig-interfaces:interfaces'].interface[0];
+            case 'interfaces/interface/config/name/':
+                cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                fullPath = cmdbPath + interfaceNameValue;
+                data = '';
+                getRequest = await this.getRequest(fullPath, data);
+
+                //Convert Data
+                let getNameConfig = openconfig_interfaces_model.eval(
+                    {
+                        'openconfig-interfaces:interfaces': {
+                            interface: [
+                                {
+                                    name: getRequest.results[0].name,
+                                    config: {
+                                        name: getRequest.results[0].name,
+                                        type: 'IF_ETHERNET',
+                                        mtu: getRequest.results[0].mtu
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    null
+                );
+                let getNametoJSON = getNameConfig.toJSON();
+                return getNametoJSON['openconfig-interfaces:interfaces'].interface[0].name;
+
+            case 'interfaces/interface/config/type/':
+                cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                fullPath = cmdbPath + interfaceNameValue;
+                data = '';
+                getRequest = await this.getRequest(fullPath, data);
+
+                //Convert Data
+                configObj = openconfig_interfaces_model.eval(
+                    {
+                        'openconfig-interfaces:interfaces': {
+                            interface: [
+                                {
+                                    name: getRequest.results[0].name,
+                                    config: {
+                                        name: getRequest.results[0].name,
+                                        type: 'IF_ETHERNET',
+                                        mtu: getRequest.results[0].mtu
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    null
+                );
+                transformConfigtoJSON = configObj.toJSON();
+                return transformConfigtoJSON['openconfig-interfaces:interfaces'].interface[0].config.type;
 
             case 'interfaces/interface/state/':
                 cmdbPath = '/api/v2/cmdb/system/interface/';
@@ -552,7 +638,7 @@ export class OpenConfigInterpreter {
                 break;
             default:
                 console.log('Path not implmented yet');
-                break;
+                return { val: 'Path Not implmented yet.' };
         }
 
         return fullPath;
