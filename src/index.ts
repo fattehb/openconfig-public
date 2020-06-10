@@ -2,6 +2,7 @@
 var Yang = require('yang-js');
 import { FortiGateAPIRequests } from './fortigateApiRequests';
 import { GnmiProtoHandlers } from './GnmiProtoHandlers';
+import { CertificateManager } from './cert_manager';
 
 const listenOnPort = 6031;
 
@@ -89,8 +90,9 @@ exports.main = async (context, req, res): Promise<void> => {
         Capabilities: gRPCServiceHandler.Capabilities,
         Subscribe: gRPCServiceHandler.Subscribe
     });
-    //TODO add auth
-    server.bind('0.0.0.0:' + listenOnPort, grpc.ServerCredentials.createInsecure());
+    // can call with customized cert files
+    const certManager = new CertificateManager();
+    server.bind('0.0.0.0:' + listenOnPort, certManager.createServerCredentials());
     server.start();
     console.log(`Server listening to traffic on ${listenOnPort}`);
 };
