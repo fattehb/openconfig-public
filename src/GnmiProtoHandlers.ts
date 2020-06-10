@@ -126,11 +126,13 @@ export class GnmiProtoHandlers {
             }
 
             let pollCount = 0;
-            let pollFor = 10;
+            let pollFor = 10000;
             let tempTime = Date.now();
+            let firstPoll = true;
             while (pollCount < pollFor) {
                 let currentTime = Date.now();
-                if (currentTime > tempTime + 5000) {
+                if (currentTime > tempTime + 500 || firstPoll === true) {
+                    firstPoll = false;
                     console.log('true');
                     tempTime = Date.now();
                     pollCount++;
