@@ -1,4 +1,5 @@
 //import { YangModel, YangInstance, YangProperty } from 'yang-js';
+//TODO: fix yang-js imports
 var Yang = require('yang-js');
 import { FortiGateAPIRequests } from './fortigateApiRequests';
 import { GnmiProtoHandlers } from './GnmiProtoHandlers';
@@ -9,7 +10,6 @@ const listenOnPort = 6031;
 var grpc = require('grpc');
 var protoLoader = require('@grpc/proto-loader');
 var PROTO_PATH = __dirname + '/gnmi/proto/gnmi/gnmi.proto';
-//var PROTO_PATH = __dirname + '/protos/gnmi.proto';
 
 var packageDefinition = protoLoader.loadSync(PROTO_PATH, {
     keepCase: true,
@@ -18,8 +18,9 @@ var packageDefinition = protoLoader.loadSync(PROTO_PATH, {
     defaults: true,
     oneofs: true
 });
-var hello_proto = grpc.loadPackageDefinition(packageDefinition).gnmi;
+var loadgNMIProto = grpc.loadPackageDefinition(packageDefinition).gnmi;
 const { FORTIGATE_API_KEY, FORTIGATE_IP, POLL_INTERVAL } = process.env;
+//TODO: move imports to package.json file.
 const importTest = Yang.import('../../public/third_party/ietf/ietf-interfaces.yang');
 const openconfig_yang_types_model = Yang.import('../../public/release/models/types/openconfig-yang-types.yang');
 const openconfig_type_model = Yang.import('../../public/release/models/types/openconfig-types.yang');
@@ -35,56 +36,13 @@ exports.main = async (context, req, res): Promise<void> => {
         '../../public/release/models/openconfig-extensions.yang',
         '../../public/release/models/interfaces/openconfig-interfaces.yang'
     ];
-
-    for (let i in yangImportList) {
-        var imports = Yang.import(i);
-        console.log(`importing: ${yangImportList[i]}`);
-    }
-
-    console.log('*************Tests******************');
-    var model = Yang.parse('container foo { leaf a { type uint8; } }');
-    var obj1 = model.eval({ foo: { a: 7 } });
-    var getter = obj1.foo.get('a');
-    console.log('getter', getter);
-    console.log('objA', obj1.foo.a);
-    console.log('obj1 ', obj1);
-    ///openconfig-interfaces:interfaces/interface/name
-    let obj = openconfig_interfaces_model.eval({
-        'openconfig-interfaces:interfaces': {
-            interface: [
-                {
-                    name: 'port1',
-                    config: {
-                        name: 'port1',
-                        type: 'IF_ETHERNET'
-                    }
-                }
-            ]
-        }
-    });
-
-    console.log('obj', JSON.stringify(obj));
-
-    let getAttrubute = obj.get('/interfaces/interface/name');
-    console.log('getAttribute: ', getAttrubute);
-
-    console.log('schema', openconfig_interfaces_model);
-
-    const openConfigInterpreter = new OpenConfigInterpreter(5000, FORTIGATE_IP, FORTIGATE_API_KEY);
-    const gRPCServiceHandler = new GnmiProtoHandlers();
-    console.log('******************* Test FortiGate Connection with put/get request ******************');
-    //TODO: remove. Test set headers
-    let testHeaders = { name: 'port1', alias: 'test3' };
-    let putInterface = await openConfigInterpreter.putConfig('/api/v2/cmdb/system/interface/port1', testHeaders);
-    let getInterfaceTest = await openConfigInterpreter.getRequest('/api/v2/cmdb/system/interface/port1', testHeaders);
-    console.log(putInterface);
-    console.log('*************END TESTS *****************');
     //gRPC
+    const gRPCServiceHandler = new GnmiProtoHandlers();
     var server = new grpc.Server();
 
     //var stub = new helloworld.Greeter('myservice.example.com', ssl_creds);
     //TODO: move into seperate class.
-    server.addService(hello_proto.gNMI.service, {
+    server.addService(loadgNMIProto.gNMI.service, {
         Get: gRPCServiceHandler.Get,
         Set: gRPCServiceHandler.Set,
         Capabilities: gRPCServiceHandler.Capabilities,
@@ -111,7 +69,7 @@ export class OpenConfigInterpreter {
     public async putInterface(call, callback) {
         console.log('called putInterface');
     }
-    // Set requests have been split out due to the nature in which they are evaluated and set.
+    // Set requests have been split out due to the nature in which they are evaluated/logic assignment.
     public async setModelRequests(pathRequest) {
         var fullPath = '',
             interfaceNameValue,
@@ -160,15 +118,14 @@ export class OpenConfigInterpreter {
                 const acceptedInterfaceTypes = ['physical', 'loopback'];
                 // 'aggregate', 'redundant', 'tunnel', 'loopback'];
 
-                // Try it where we expect a match
-                TODO: for (let i of acceptedInterfaceTypes) {
+                for (let i of acceptedInterfaceTypes) {
                     if (interfaceNameValue.toLowerCase().includes(i)) {
                         interfaceType = i;
                         console.log(`Assuming interface type: ${i}`);
                     }
                 }
                 if (interfaceType === null) {
-                    //TODO: needs to be sent to the gNMI client instead.
+                    //TODO: errors needs to be sent to the gNMI client instead.
                     const err = new Error(`
                     Could not determine interfacetype from name ${interfaceNameValue}. Current accepted types are:
                     physical loopback
@@ -191,7 +148,6 @@ export class OpenConfigInterpreter {
             case 'interfaces/interface/config/enabled/':
                 cmdbPath = '/api/v2/cmdb/system/interface/';
 
-                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
                 fullPath = cmdbPath + interfaceNameValue;
                 data = {
                     name: interfaceNameValue,
@@ -203,7 +159,6 @@ export class OpenConfigInterpreter {
             case 'interfaces/interface/config/mtu/':
                 cmdbPath = '/api/v2/cmdb/system/interface/';
 
-                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
                 fullPath = cmdbPath + interfaceNameValue;
                 data = {
                     name: interfaceNameValue,
@@ -215,7 +170,6 @@ export class OpenConfigInterpreter {
             case 'interfaces/interface/config/description/':
                 cmdbPath = '/api/v2/cmdb/system/interface/';
 
-                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
                 fullPath = cmdbPath + interfaceNameValue;
                 data = {
                     name: interfaceNameValue,
@@ -232,6 +186,7 @@ export class OpenConfigInterpreter {
     }
 
     public async translatePath(pathRequest) {
+        //TODO: currently assumes just interface.
         //TODO:Normalize data,
         //TODO: accept multiple values for interface etc
         //TODO: accept wildcard
@@ -251,12 +206,13 @@ export class OpenConfigInterpreter {
         var uptime;
         var readOnlyData;
         var getUptimeRequest;
+        var transformConfigtoJSON;
+        var configObj;
 
         var fullPath = '';
         console.log('Path Request' + JSON.stringify(pathRequest));
-        //SUbscribe shows as:
+        //Subscribe commands shows as:
         //for (const item of pathRequest.path.elem) {
-        //Get
         if (pathRequest?.subscription) {
             console.log('Subscription Request sent');
             //Subscription path contains an array at elem but not at path.
@@ -265,32 +221,21 @@ export class OpenConfigInterpreter {
                 fullPath = fullPath + item.name + '/';
                 interfaceNameValue = pathRequest.subscription[0].path.elem[1].key.name;
                 //TODO account for multiple names etc:
-                // if (item.key && item.key.key) {
-                //     fullPath = fullPath + '[' + item.key.value + ']';
-                // }
                 console.log('item ' + JSON.stringify(item));
             }
         } else {
+            //Assume Get request, if not sub.
             //get request contains an array at path, but not at elem.
             for (const item of pathRequest.path[0].elem) {
                 fullPath = fullPath + item.name + '/';
                 interfaceNameValue = pathRequest.path[0].elem[1].key.name;
-                //TODO account for multiple names etc:
-                // if (item.key && item.key.key) {
-                //     fullPath = fullPath + '[' + item.key.value + ']';
-                // }
+                //TODO account for multiple names etc.
                 console.log('item ' + JSON.stringify(item));
             }
         }
-        //TODO:seperate for get/set/sub
-        console.log('Path Request' + JSON.stringify(pathRequest));
+
         //Assume sub ATM
-        // if (pathRequest.elem[0].name === 'interfaces') {
         //     //TODO: error check.
-        //     let cmdbPath = '/api/v2/cmdb/system/interface/';
-        //     let interfaceValue = pathRequest.elem[1].key.name;
-        //     fullPath = cmdbPath + interfaceValue;
-        // }
         console.log(`Constructed RestAPI Path: ${fullPath}`);
         switch (fullPath) {
             case 'interfaces/interface/':
@@ -298,7 +243,6 @@ export class OpenConfigInterpreter {
                 monitorPath = '/api/v2/monitor/system/interface/';
                 uptimePath = '/api/v2/monitor/web-ui/state';
 
-                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
                 fullPath = cmdbPath + interfaceNameValue;
                 data = '';
                 getRequest = await this.getRequest(fullPath, data);
@@ -311,7 +255,7 @@ export class OpenConfigInterpreter {
                 console.log('FortiGate Rest Response: ' + JSON.stringify(getMontiorRequest));
 
                 //Convert Data
-                let configObj = openconfig_interfaces_model.eval(
+                configObj = openconfig_interfaces_model.eval(
                     {
                         'openconfig-interfaces:interfaces': {
                             interface: [
@@ -367,21 +311,103 @@ export class OpenConfigInterpreter {
                         }
                     }
                 };
-                configObjtoJSON['openconfig-interfaces:interfaces'].interface[0].state = readOnlyData;
+                //configObjtoJSON['openconfig-interfaces:interfaces'].interface[0].state
                 console.log('CONFIGOBJECT COMBINED ' + JSON.stringify(configObjtoJSON));
-                let combinedObj = {
-                    'openconfig-interfaces:interfaces':
-                        configObjtoJSON['openconfig-interfaces:interfaces'] + readOnlyData.state
-                };
+                let combinedObj = configObjtoJSON['openconfig-interfaces:interfaces'];
+                combinedObj.interface[0].sate = readOnlyData.state;
+
                 console.log('Combined Data' + JSON.stringify(combinedObj));
                 return combinedObj;
+
+            // Return evaluated config.
+            case 'interfaces/interface/config/':
+                cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                fullPath = cmdbPath + interfaceNameValue;
+                data = '';
+                getRequest = await this.getRequest(fullPath, data);
+
+                //Convert Data
+                let configValues = openconfig_interfaces_model.eval(
+                    {
+                        'openconfig-interfaces:interfaces': {
+                            interface: [
+                                {
+                                    name: getRequest.results[0].name,
+                                    config: {
+                                        name: getRequest.results[0].name,
+                                        type: 'IF_ETHERNET',
+                                        mtu: getRequest.results[0].mtu
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    null
+                );
+                let configValuestoJSON = configValues.toJSON();
+                return configValuestoJSON['openconfig-interfaces:interfaces'].interface[0];
+            case 'interfaces/interface/config/name/':
+                cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                fullPath = cmdbPath + interfaceNameValue;
+                data = '';
+                getRequest = await this.getRequest(fullPath, data);
+
+                //Convert Data
+                let getNameConfig = openconfig_interfaces_model.eval(
+                    {
+                        'openconfig-interfaces:interfaces': {
+                            interface: [
+                                {
+                                    name: getRequest.results[0].name,
+                                    config: {
+                                        name: getRequest.results[0].name,
+                                        type: 'IF_ETHERNET',
+                                        mtu: getRequest.results[0].mtu
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    null
+                );
+                let getNametoJSON = getNameConfig.toJSON();
+                return getNametoJSON['openconfig-interfaces:interfaces'].interface[0].name;
+
+            case 'interfaces/interface/config/type/':
+                cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                fullPath = cmdbPath + interfaceNameValue;
+                data = '';
+                getRequest = await this.getRequest(fullPath, data);
+
+                //Convert Data
+                configObj = openconfig_interfaces_model.eval(
+                    {
+                        'openconfig-interfaces:interfaces': {
+                            interface: [
+                                {
+                                    name: getRequest.results[0].name,
+                                    config: {
+                                        name: getRequest.results[0].name,
+                                        type: 'IF_ETHERNET',
+                                        mtu: getRequest.results[0].mtu
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    null
+                );
+                transformConfigtoJSON = configObj.toJSON();
+                return transformConfigtoJSON['openconfig-interfaces:interfaces'].interface[0].config.type;
 
             case 'interfaces/interface/state/':
                 cmdbPath = '/api/v2/cmdb/system/interface/';
                 monitorPath = '/api/v2/monitor/system/interface/';
                 uptimePath = '/api/v2/monitor/web-ui/state';
                 getUptimeRequest = await this.getRequest(uptimePath, '');
-                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
                 fullPath = cmdbPath + interfaceNameValue;
                 data = '';
                 getRequest = await this.getRequest(fullPath, data);
@@ -432,7 +458,6 @@ export class OpenConfigInterpreter {
                 uptimePath = '/api/v2/monitor/web-ui/state';
                 getUptimeRequest = await this.getRequest(uptimePath, '');
 
-                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
                 fullPath = cmdbPath + interfaceNameValue;
                 data = '';
 
@@ -466,8 +491,6 @@ export class OpenConfigInterpreter {
                 return counterData;
             case 'interfaces/interface/state/counters/in-pkts/':
                 monitorPath = '/api/v2/monitor/system/interface/';
-
-                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
                 getMontiorRequest = await this.getRequest(monitorPath, {
                     interface_name: interfaceNameValue
                 });
@@ -478,7 +501,6 @@ export class OpenConfigInterpreter {
                 return inPackets;
             case 'interfaces/interface/state/counters/in-errors/':
                 monitorPath = '/api/v2/monitor/system/interface/';
-                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
 
                 getMontiorRequest = await this.getRequest(monitorPath, {
                     interface_name: interfaceNameValue
@@ -490,7 +512,6 @@ export class OpenConfigInterpreter {
                 return inErrors;
             case 'interfaces/interface/state/counters/out-pkts/':
                 monitorPath = '/api/v2/monitor/system/interface/';
-                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
 
                 getMontiorRequest = await this.getRequest(monitorPath, {
                     interface_name: interfaceNameValue
@@ -502,7 +523,6 @@ export class OpenConfigInterpreter {
                 return outPkts;
             case 'interfaces/interface/state/counters/out-errors/':
                 monitorPath = '/api/v2/monitor/system/interface/';
-                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
 
                 getMontiorRequest = await this.getRequest(monitorPath, {
                     interface_name: interfaceNameValue
@@ -514,7 +534,6 @@ export class OpenConfigInterpreter {
                 return outErrors;
             case 'interfaces/interface/state/counters/out-octets/':
                 monitorPath = '/api/v2/monitor/system/interface/';
-                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
 
                 getMontiorRequest = await this.getRequest(monitorPath, {
                     interface_name: interfaceNameValue
@@ -526,21 +545,19 @@ export class OpenConfigInterpreter {
                 return outOctets;
             case 'interfaces/interface/state/counters/in-octets/':
                 monitorPath = '/api/v2/monitor/system/interface/';
-                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
 
                 getMontiorRequest = await this.getRequest(monitorPath, {
                     interface_name: interfaceNameValue
                 });
                 monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                let inOctets = {
-                    'in-octets': monitorInterface.rx_bytes
-                };
+                let inOctets = monitorInterface.rx_bytes;
+                //TODO:
                 return inOctets;
             // Uptime returend via last reboot time.
             case 'interfaces/interface/state/counters/last-clear':
                 uptimePath = '/api/v2/monitor/web-ui/state';
                 getUptimeRequest = await this.getRequest(uptimePath, '');
-                //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+
                 let lastClear = {
                     'last-clear': getUptimeRequest.results.utc_last_reboot
                 };
@@ -554,7 +571,7 @@ export class OpenConfigInterpreter {
                 break;
             default:
                 console.log('Path not implmented yet');
-                break;
+                return { val: 'Path Not implmented yet.' };
         }
 
         return fullPath;
