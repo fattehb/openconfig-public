@@ -1,0 +1,7 @@
+# From development
+tags
+*.swp
+src/node_modules
+certs/
+gnmi/
+.vscode/
