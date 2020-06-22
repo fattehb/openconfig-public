@@ -1,8 +1,8 @@
-//import { YangModel, YangInstance, YangProperty } from 'yang-js';
 //TODO: fix yang-js imports
 var Yang = require('yang-js');
 import { FortiGateAPIRequests } from './fortigate-api-requests';
 import { GnmiProtoHandlers } from './gnmi-proto-handlers';
+import { CertificateManager } from './cert-manager';
 
 const listenOnPort = 6031;
 
