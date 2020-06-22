@@ -5,22 +5,22 @@ const path = require('path');
 const LOG_DIRECTORY = path.join(__dirname, '..', 'logs');
 
 class LOG_MODE {
-    static CONSOLE: string = 'console';
-    static FILE: string = 'file';
-    static BOTH: string = 'both';
+    static readonly CONSOLE: string = 'console';
+    static readonly FILE: string = 'file';
+    static readonly BOTH: string = 'both';
 }
 
 class LOG_LEVEL {
-    static INFO: string = 'info';
-    static WARN: string = 'warn';
-    static ERROR: string = 'error';
+    static readonly INFO: string = 'info';
+    static readonly WARN: string = 'warn';
+    static readonly ERROR: string = 'error';
 }
 
 class Log {
     filename: string;
 
-    LOG_MODE: LOG_MODE = LOG_MODE;
-    LOG_LEVEL: LOG_LEVEL = LOG_LEVEL;
+    readonly LOG_MODE: LOG_MODE = LOG_MODE;
+    readonly LOG_LEVEL: LOG_LEVEL = LOG_LEVEL;
 
     private _logContents: string;
     private _logMode: string;
