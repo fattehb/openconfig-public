@@ -3,6 +3,7 @@ var Yang = require('yang-js');
 import { FortiGateAPIRequests } from './fortigate-api-requests';
 import { GnmiProtoHandlers } from './gnmi-proto-handlers';
 import { CertificateManager } from './cert-manager';
+import { log } from './util/log';
 
 const listenOnPort = 6031;
 
@@ -27,7 +28,8 @@ const openconfig_extensions_model = Yang.import('../../public/release/models/ope
 const openconfig_interfaces_model = Yang.import('../../public/release/models/interfaces/openconfig-interfaces.yang');
 
 exports.main = async (context, req, res): Promise<void> => {
-    console.log('Function Started');
+    log.init();
+    log.info('Function Started');
     let yangImportList = [
         '../../public/third_party/ietf/ietf-interfaces.yang',
         '../../public/release/models/types/openconfig-yang-types.yang',
@@ -51,7 +53,7 @@ exports.main = async (context, req, res): Promise<void> => {
     const certManager = new CertificateManager();
     server.bind('0.0.0.0:' + listenOnPort, certManager.createServerCredentials());
     server.start();
-    console.log(`Server listening to traffic on ${listenOnPort}`);
+    log.info(`Server listening to traffic on ${listenOnPort}`);
 };
 export class OpenConfigInterpreter {
     private POLL_INTERVAL: number; //milliseconds
@@ -66,7 +68,7 @@ export class OpenConfigInterpreter {
     }
 
     public async putInterface(call, callback) {
-        console.log('called putInterface');
+        log.info('called putInterface');
     }
     // Set requests have been split out due to the nature in which they are evaluated/logic assignment.
     public async setModelRequests(pathRequest) {
@@ -78,21 +80,21 @@ export class OpenConfigInterpreter {
             postRequest,
             typeValue,
             postValue;
-        console.log('pathrequest for set ' + JSON.stringify(pathRequest));
+        log.info('pathrequest for set ' + JSON.stringify(pathRequest));
         if (pathRequest?.update) {
             interfaceNameValue = pathRequest.update[0].path.elem[1].key.name;
             // Value presented by the gNMI
             // Value wil be int_val/string_val etc. Can easily tell which, by grabbing value
             typeValue = pathRequest.update[0].val.value;
             postValue = pathRequest.update[0].val[typeValue];
-            console.log('postvalue ' + postValue);
-            console.log('Set Update Request');
+            log.info('postvalue ' + postValue);
+            log.info('Set Update Request');
             //Construct the path
             for (const item of pathRequest.update[0].path.elem) {
                 //TODO: account for multiple names etc:
                 fullPath = fullPath + item.name + '/';
             }
-            console.log(fullPath);
+            log.info(fullPath);
         }
         switch (fullPath) {
             case 'interfaces/interface/':
@@ -120,7 +122,7 @@ export class OpenConfigInterpreter {
                 for (let i of acceptedInterfaceTypes) {
                     if (interfaceNameValue.toLowerCase().includes(i)) {
                         interfaceType = i;
-                        console.log(`Assuming interface type: ${i}`);
+                        log.info(`Assuming interface type: ${i}`);
                     }
                 }
                 if (interfaceType === null) {
@@ -129,7 +131,7 @@ export class OpenConfigInterpreter {
                     Could not determine interfacetype from name ${interfaceNameValue}. Current accepted types are:
                     physical loopback
                     `);
-                    console.error(err.message);
+                    log.error(err.message);
                     throw err;
                 }
 
@@ -140,7 +142,7 @@ export class OpenConfigInterpreter {
                     vdom: 'root',
                     type: interfaceType
                 };
-                console.log('Post Data' + JSON.stringify(data));
+                log.info('Post Data' + JSON.stringify(data));
                 postRequest = await this.postConfig(fullPath, data);
 
                 return postRequest;
@@ -179,7 +181,7 @@ export class OpenConfigInterpreter {
 
                 return postRequest;
             default:
-                console.log('Path not implmented yet');
+                log.info('Path not implmented yet');
                 return -1;
         }
     }
@@ -209,18 +211,18 @@ export class OpenConfigInterpreter {
         var configObj;
 
         var fullPath = '';
-        console.log('Path Request' + JSON.stringify(pathRequest));
+        log.info('Path Request' + JSON.stringify(pathRequest));
         //Subscribe commands shows as:
         //for (const item of pathRequest.path.elem) {
         if (pathRequest?.subscription) {
-            console.log('Subscription Request sent');
+            log.info('Subscription Request sent');
             //Subscription path contains an array at elem but not at path.
             for (const item of pathRequest.subscription[0].path.elem) {
                 //TODO: account for multiple names etc:
                 fullPath = fullPath + item.name + '/';
                 interfaceNameValue = pathRequest.subscription[0].path.elem[1].key.name;
                 //TODO account for multiple names etc:
-                console.log('item ' + JSON.stringify(item));
+                log.info('item ' + JSON.stringify(item));
             }
         } else {
             //Assume Get request, if not sub.
@@ -229,13 +231,13 @@ export class OpenConfigInterpreter {
                 fullPath = fullPath + item.name + '/';
                 interfaceNameValue = pathRequest.path[0].elem[1].key.name;
                 //TODO account for multiple names etc.
-                console.log('item ' + JSON.stringify(item));
+                log.info('item ' + JSON.stringify(item));
             }
         }
 
         //Assume sub ATM
         //     //TODO: error check.
-        console.log(`Constructed RestAPI Path: ${fullPath}`);
+        log.info(`Constructed RestAPI Path: ${fullPath}`);
         switch (fullPath) {
             case 'interfaces/interface/':
                 cmdbPath = '/api/v2/cmdb/system/interface/';
@@ -250,8 +252,8 @@ export class OpenConfigInterpreter {
                 });
                 getUptimeRequest = await this.getRequest(uptimePath, '');
                 monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                console.log(JSON.stringify(monitorInterface));
-                console.log('FortiGate Rest Response: ' + JSON.stringify(getMontiorRequest));
+                log.info(JSON.stringify(monitorInterface));
+                log.info('FortiGate Rest Response: ' + JSON.stringify(getMontiorRequest));
 
                 //Convert Data
                 configObj = openconfig_interfaces_model.eval(
@@ -272,10 +274,10 @@ export class OpenConfigInterpreter {
                     null
                 );
                 let configObjtoJSON = configObj.toJSON();
-                console.log(
+                log.info(
                     'config object items ' + configObjtoJSON['openconfig-interfaces:interfaces'].interface[0].name
                 );
-                console.log('configObject' + JSON.stringify(configObj.toJSON()));
+                log.info('configObject' + JSON.stringify(configObj.toJSON()));
                 let readOnlyData = {
                     state: {
                         name: getRequest.results[0].name,
@@ -311,11 +313,11 @@ export class OpenConfigInterpreter {
                     }
                 };
                 //configObjtoJSON['openconfig-interfaces:interfaces'].interface[0].state
-                console.log('CONFIGOBJECT COMBINED ' + JSON.stringify(configObjtoJSON));
+                log.info('CONFIGOBJECT COMBINED ' + JSON.stringify(configObjtoJSON));
                 let combinedObj = configObjtoJSON['openconfig-interfaces:interfaces'];
                 combinedObj.interface[0].sate = readOnlyData.state;
 
-                console.log('Combined Data' + JSON.stringify(combinedObj));
+                log.info('Combined Data' + JSON.stringify(combinedObj));
                 return combinedObj;
 
             // Return evaluated config.
@@ -563,13 +565,13 @@ export class OpenConfigInterpreter {
                 return lastClear;
 
             case 'interfaces/interface/subinterfaces/':
-                console.log('subinterfaces not implmented yet');
+                log.info('subinterfaces not implmented yet');
                 break;
             case 'interfaces/interface/hold-time/':
-                console.log('Path not implmented yet');
+                log.info('Path not implmented yet');
                 break;
             default:
-                console.log('Path not implmented yet');
+                log.info('Path not implmented yet');
                 return { val: 'Path Not implmented yet.' };
         }
 
@@ -577,9 +579,9 @@ export class OpenConfigInterpreter {
     }
 
     public JoinPathElems(pathElements) {
-        console.log('Joining Path');
+        log.info('Joining Path');
         for (const item of pathElements.request.path[0].elem) {
-            console.log('item ' + item);
+            log.info('item ' + item);
         }
     }
     public getFeature(call, callback) {
@@ -587,7 +589,7 @@ export class OpenConfigInterpreter {
     }
     //Streaming RPC
     public listFeature(call, callback) {
-        console.log('checkFeature');
+        log.info('checkFeature');
     }
 
     public async pollFortigate(path: string, data) {
@@ -615,9 +617,9 @@ export class OpenConfigInterpreter {
         //TODO: convert to own class structure
         //Only works with interface for now
 
-        console.log('ModelType: ' + JSON.stringify(modelType));
+        log.info('ModelType: ' + JSON.stringify(modelType));
         if (modelType.elem[0].name == 'interfaces') {
-            console.log('interface selected in ConvertRestToYang');
+            log.info('interface selected in ConvertRestToYang');
             let type;
             //TODO:
             if (config.results[0].type == 'physical') {
