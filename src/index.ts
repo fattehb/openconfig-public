@@ -1,48 +1,56 @@
-//TODO: fix yang-js imports
-var Yang = require('yang-js');
-import { FortiGateAPIRequests } from './fortigate-api-requests';
-import { GnmiProtoHandlers } from './gnmi-proto-handlers';
-import { CertificateManager } from './cert-manager';
+// TODO: fix yang-js imports
+const Yang = require('yang-js');
+import { FortiGateAPIRequests } from './lib/fortigate-api-requests';
+import { GnmiProtoHandlers } from './lib/gnmi-proto-handlers';
+import { CertificateManager } from './lib/cert-manager';
 import { log } from './util/log';
 
 const listenOnPort = 6031;
 
-var grpc = require('grpc');
-var protoLoader = require('@grpc/proto-loader');
-var PROTO_PATH = __dirname + '/gnmi/proto/gnmi/gnmi.proto';
+const grpc = require('grpc');
+const protoLoader = require('@grpc/proto-loader');
+const PROTO_PATH = `${__dirname}/gnmi/proto/gnmi/gnmi.proto`;
 
-var packageDefinition = protoLoader.loadSync(PROTO_PATH, {
+const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
     keepCase: true,
     longs: String,
     enums: String,
     defaults: true,
     oneofs: true
 });
-var loadgNMIProto = grpc.loadPackageDefinition(packageDefinition).gnmi;
+const loadgNMIProto = grpc.loadPackageDefinition(packageDefinition).gnmi;
 const { FORTIGATE_API_KEY, FORTIGATE_IP, POLL_INTERVAL } = process.env;
-//TODO: move imports to package.json file.
+// TODO: move imports to package.json file.
 const importTest = Yang.import('../../public/third_party/ietf/ietf-interfaces.yang');
-const openconfig_yang_types_model = Yang.import('../../public/release/models/types/openconfig-yang-types.yang');
-const openconfig_type_model = Yang.import('../../public/release/models/types/openconfig-types.yang');
-const openconfig_extensions_model = Yang.import('../../public/release/models/openconfig-extensions.yang');
-const openconfig_interfaces_model = Yang.import('../../public/release/models/interfaces/openconfig-interfaces.yang');
+const openconfig_yang_types_model = Yang.import(
+    '../../public/release/models/types/openconfig-yang-types.yang'
+);
+const openconfig_type_model = Yang.import(
+    '../../public/release/models/types/openconfig-types.yang'
+);
+const openconfig_extensions_model = Yang.import(
+    '../../public/release/models/openconfig-extensions.yang'
+);
+const openconfig_interfaces_model = Yang.import(
+    '../../public/release/models/interfaces/openconfig-interfaces.yang'
+);
 
 exports.main = async (context, req, res): Promise<void> => {
     log.init();
     log.info('Function Started');
-    let yangImportList = [
+    const yangImportList = [
         '../../public/third_party/ietf/ietf-interfaces.yang',
         '../../public/release/models/types/openconfig-yang-types.yang',
         '../../public/release/models/types/openconfig-types.yang',
         '../../public/release/models/openconfig-extensions.yang',
         '../../public/release/models/interfaces/openconfig-interfaces.yang'
     ];
-    //gRPC
+    // gRPC
     const gRPCServiceHandler = new GnmiProtoHandlers();
-    var server = new grpc.Server();
+    const server = new grpc.Server();
 
-    //var stub = new helloworld.Greeter('myservice.example.com', ssl_creds);
-    //TODO: move into seperate class.
+    // var stub = new helloworld.Greeter('myservice.example.com', ssl_creds);
+    // TODO: move into seperate class.
     server.addService(loadgNMIProto.gNMI.service, {
         Get: gRPCServiceHandler.Get,
         Set: gRPCServiceHandler.Set,
@@ -51,18 +59,18 @@ exports.main = async (context, req, res): Promise<void> => {
     });
     // can call with customized cert files
     const certManager = new CertificateManager();
-    server.bind('0.0.0.0:' + listenOnPort, certManager.createServerCredentials());
+    server.bind(`0.0.0.0:${listenOnPort}`, certManager.createServerCredentials());
     server.start();
     log.info(`Server listening to traffic on ${listenOnPort}`);
 };
 export class OpenConfigInterpreter {
-    private POLL_INTERVAL: number; //milliseconds
+    private POLL_INTERVAL: number; // milliseconds
     private FORTIGATE_IP: string;
     private FORTIGATE_API_KEY: string;
     private API_KEY: string;
 
     constructor(POLL_INTERVAL: number, FORTIGATE_IP: string, FORTIGATE_API_KEY: string) {
-        this.POLL_INTERVAL = POLL_INTERVAL; //milliseconds
+        this.POLL_INTERVAL = POLL_INTERVAL; // milliseconds
         this.FORTIGATE_IP = FORTIGATE_IP;
         this.FORTIGATE_API_KEY = FORTIGATE_API_KEY;
     }
@@ -72,7 +80,7 @@ export class OpenConfigInterpreter {
     }
     // Set requests have been split out due to the nature in which they are evaluated/logic assignment.
     public async setModelRequests(pathRequest) {
-        var fullPath = '',
+        let fullPath = '',
             interfaceNameValue,
             cmdbPath,
             data,
@@ -80,19 +88,19 @@ export class OpenConfigInterpreter {
             postRequest,
             typeValue,
             postValue;
-        log.info('pathrequest for set ' + JSON.stringify(pathRequest));
+        log.info(`pathrequest for set ${JSON.stringify(pathRequest)}`);
         if (pathRequest?.update) {
             interfaceNameValue = pathRequest.update[0].path.elem[1].key.name;
             // Value presented by the gNMI
             // Value wil be int_val/string_val etc. Can easily tell which, by grabbing value
             typeValue = pathRequest.update[0].val.value;
             postValue = pathRequest.update[0].val[typeValue];
-            log.info('postvalue ' + postValue);
+            log.info(`postvalue ${postValue}`);
             log.info('Set Update Request');
-            //Construct the path
+            // Construct the path
             for (const item of pathRequest.update[0].path.elem) {
-                //TODO: account for multiple names etc:
-                fullPath = fullPath + item.name + '/';
+                // TODO: account for multiple names etc:
+                fullPath = `${fullPath + item.name}/`;
             }
             log.info(fullPath);
         }
@@ -113,20 +121,20 @@ export class OpenConfigInterpreter {
                 // A NETCONF server MUST reply with an rpc-error with the
                 // error-tag 'invalid-value' in this case.";
 
-                //This means that we must create an interface type, based on the name:
+                // This means that we must create an interface type, based on the name:
                 let interfaceType;
 
                 const acceptedInterfaceTypes = ['physical', 'loopback'];
                 // 'aggregate', 'redundant', 'tunnel', 'loopback'];
 
-                for (let i of acceptedInterfaceTypes) {
+                for (const i of acceptedInterfaceTypes) {
                     if (interfaceNameValue.toLowerCase().includes(i)) {
                         interfaceType = i;
                         log.info(`Assuming interface type: ${i}`);
                     }
                 }
                 if (interfaceType === null) {
-                    //TODO: errors needs to be sent to the gNMI client instead.
+                    // TODO: errors needs to be sent to the gNMI client instead.
                     const err = new Error(`
                     Could not determine interfacetype from name ${interfaceNameValue}. Current accepted types are:
                     physical loopback
@@ -142,7 +150,7 @@ export class OpenConfigInterpreter {
                     vdom: 'root',
                     type: interfaceType
                 };
-                log.info('Post Data' + JSON.stringify(data));
+                log.info(`Post Data${JSON.stringify(data)}`);
                 postRequest = await this.postConfig(fullPath, data);
 
                 return postRequest;
@@ -187,55 +195,55 @@ export class OpenConfigInterpreter {
     }
 
     public async translatePath(pathRequest) {
-        //TODO: currently assumes just interface.
-        //TODO:Normalize data,
-        //TODO: accept multiple values for interface etc
-        //TODO: accept wildcard
+        // TODO: currently assumes just interface.
+        // TODO:Normalize data,
+        // TODO: accept multiple values for interface etc
+        // TODO: accept wildcard
         // TODO: accept on_change value.
         // TODO: seperate into sepearte classes? for each model.
         // TODO: for models, keep one master, with apicalls etc, call from that section of the model for the respective paths. One place to update in this case
 
-        var cmdbPath;
-        var monitorPath;
-        //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
-        var interfaceNameValue;
-        var data;
-        var getRequest;
-        var getMontiorRequest;
-        var monitorInterface;
-        var uptimePath;
-        var uptime;
-        var readOnlyData;
-        var getUptimeRequest;
-        var transformConfigtoJSON;
-        var configObj;
+        let cmdbPath;
+        let monitorPath;
+        // let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+        let interfaceNameValue;
+        let data;
+        let getRequest;
+        let getMontiorRequest;
+        let monitorInterface;
+        let uptimePath;
+        let uptime;
+        let readOnlyData;
+        let getUptimeRequest;
+        let transformConfigtoJSON;
+        let configObj;
 
-        var fullPath = '';
-        log.info('Path Request' + JSON.stringify(pathRequest));
-        //Subscribe commands shows as:
-        //for (const item of pathRequest.path.elem) {
+        let fullPath = '';
+        log.info(`Path Request${JSON.stringify(pathRequest)}`);
+        // Subscribe commands shows as:
+        // for (const item of pathRequest.path.elem) {
         if (pathRequest?.subscription) {
             log.info('Subscription Request sent');
-            //Subscription path contains an array at elem but not at path.
+            // Subscription path contains an array at elem but not at path.
             for (const item of pathRequest.subscription[0].path.elem) {
-                //TODO: account for multiple names etc:
-                fullPath = fullPath + item.name + '/';
+                // TODO: account for multiple names etc:
+                fullPath = `${fullPath + item.name}/`;
                 interfaceNameValue = pathRequest.subscription[0].path.elem[1].key.name;
-                //TODO account for multiple names etc:
-                log.info('item ' + JSON.stringify(item));
+                // TODO account for multiple names etc:
+                log.info(`item ${JSON.stringify(item)}`);
             }
         } else {
-            //Assume Get request, if not sub.
-            //get request contains an array at path, but not at elem.
+            // Assume Get request, if not sub.
+            // get request contains an array at path, but not at elem.
             for (const item of pathRequest.path[0].elem) {
-                fullPath = fullPath + item.name + '/';
+                fullPath = `${fullPath + item.name}/`;
                 interfaceNameValue = pathRequest.path[0].elem[1].key.name;
-                //TODO account for multiple names etc.
-                log.info('item ' + JSON.stringify(item));
+                // TODO account for multiple names etc.
+                log.info(`item ${JSON.stringify(item)}`);
             }
         }
 
-        //Assume sub ATM
+        // Assume sub ATM
         //     //TODO: error check.
         log.info(`Constructed RestAPI Path: ${fullPath}`);
         switch (fullPath) {
@@ -253,9 +261,9 @@ export class OpenConfigInterpreter {
                 getUptimeRequest = await this.getRequest(uptimePath, '');
                 monitorInterface = getMontiorRequest.results[interfaceNameValue];
                 log.info(JSON.stringify(monitorInterface));
-                log.info('FortiGate Rest Response: ' + JSON.stringify(getMontiorRequest));
+                log.info(`FortiGate Rest Response: ${JSON.stringify(getMontiorRequest)}`);
 
-                //Convert Data
+                // Convert Data
                 configObj = openconfig_interfaces_model.eval(
                     {
                         'openconfig-interfaces:interfaces': {
@@ -273,51 +281,51 @@ export class OpenConfigInterpreter {
                     },
                     null
                 );
-                let configObjtoJSON = configObj.toJSON();
+                const configObjtoJSON = configObj.toJSON();
                 log.info(
-                    'config object items ' + configObjtoJSON['openconfig-interfaces:interfaces'].interface[0].name
+                    `config object items ${configObjtoJSON['openconfig-interfaces:interfaces'].interface[0].name}`
                 );
-                log.info('configObject' + JSON.stringify(configObj.toJSON()));
-                let readOnlyData = {
+                log.info(`configObject${JSON.stringify(configObj.toJSON())}`);
+                const readOnlyData = {
                     state: {
                         name: getRequest.results[0].name,
                         type: 'IF_ETHERNET',
                         mtu: getRequest.results[0].mtu,
                         'loopback-mode': false,
                         description: getRequest.results[0].description,
-                        enabled: getRequest.results[0].status === 'up' ? true : false,
+                        enabled: getRequest.results[0].status === 'up',
                         ifindex: getRequest.results[0].status.vindex,
                         'admin-status': getRequest.results[0].status === 'up' ? 'UP' : 'DOWN',
                         'oper-status': getRequest.results[0].status === 'up' ? 'UP' : 'DOWN',
-                        //logical TODO:look into this.
+                        // logical TODO:look into this.
                         counters: {
                             'in-octets': monitorInterface.rx_bytes,
                             'in-pkts': monitorInterface.rx_packets,
-                            //"in-unicast-pkts":
-                            //"in-broadcast-pkts":
-                            //"in-multicast-pkts":
-                            //"in-discards":
+                            // "in-unicast-pkts":
+                            // "in-broadcast-pkts":
+                            // "in-multicast-pkts":
+                            // "in-discards":
                             'in-errors': monitorInterface.rx_errors,
-                            //"in-unknown-protos":
-                            //"in-fcs-errors":
+                            // "in-unknown-protos":
+                            // "in-fcs-errors":
                             'out-octets': monitorInterface.tx_bytes,
                             'out-pkts': monitorInterface.tx_packets,
-                            //"out-unicast-pkts":
-                            //"out-broadcast-pkts":
-                            //"out-multicast-pkts":
-                            //"out-discards":
+                            // "out-unicast-pkts":
+                            // "out-broadcast-pkts":
+                            // "out-multicast-pkts":
+                            // "out-discards":
                             'out-errors': monitorInterface.tx_errors,
-                            //"carrier-transitions":
+                            // "carrier-transitions":
                             'last-clear': getUptimeRequest.results.utc_last_reboot
                         }
                     }
                 };
-                //configObjtoJSON['openconfig-interfaces:interfaces'].interface[0].state
-                log.info('CONFIGOBJECT COMBINED ' + JSON.stringify(configObjtoJSON));
-                let combinedObj = configObjtoJSON['openconfig-interfaces:interfaces'];
+                // configObjtoJSON['openconfig-interfaces:interfaces'].interface[0].state
+                log.info(`CONFIGOBJECT COMBINED ${JSON.stringify(configObjtoJSON)}`);
+                const combinedObj = configObjtoJSON['openconfig-interfaces:interfaces'];
                 combinedObj.interface[0].sate = readOnlyData.state;
 
-                log.info('Combined Data' + JSON.stringify(combinedObj));
+                log.info(`Combined Data${JSON.stringify(combinedObj)}`);
                 return combinedObj;
 
             // Return evaluated config.
@@ -328,8 +336,8 @@ export class OpenConfigInterpreter {
                 data = '';
                 getRequest = await this.getRequest(fullPath, data);
 
-                //Convert Data
-                let configValues = openconfig_interfaces_model.eval(
+                // Convert Data
+                const configValues = openconfig_interfaces_model.eval(
                     {
                         'openconfig-interfaces:interfaces': {
                             interface: [
@@ -346,7 +354,7 @@ export class OpenConfigInterpreter {
                     },
                     null
                 );
-                let configValuestoJSON = configValues.toJSON();
+                const configValuestoJSON = configValues.toJSON();
                 return configValuestoJSON['openconfig-interfaces:interfaces'].interface[0];
             case 'interfaces/interface/config/name/':
                 cmdbPath = '/api/v2/cmdb/system/interface/';
@@ -355,8 +363,8 @@ export class OpenConfigInterpreter {
                 data = '';
                 getRequest = await this.getRequest(fullPath, data);
 
-                //Convert Data
-                let getNameConfig = openconfig_interfaces_model.eval(
+                // Convert Data
+                const getNameConfig = openconfig_interfaces_model.eval(
                     {
                         'openconfig-interfaces:interfaces': {
                             interface: [
@@ -373,7 +381,7 @@ export class OpenConfigInterpreter {
                     },
                     null
                 );
-                let getNametoJSON = getNameConfig.toJSON();
+                const getNametoJSON = getNameConfig.toJSON();
                 return getNametoJSON['openconfig-interfaces:interfaces'].interface[0].name;
 
             case 'interfaces/interface/config/type/':
@@ -383,7 +391,7 @@ export class OpenConfigInterpreter {
                 data = '';
                 getRequest = await this.getRequest(fullPath, data);
 
-                //Convert Data
+                // Convert Data
                 configObj = openconfig_interfaces_model.eval(
                     {
                         'openconfig-interfaces:interfaces': {
@@ -402,7 +410,8 @@ export class OpenConfigInterpreter {
                     null
                 );
                 transformConfigtoJSON = configObj.toJSON();
-                return transformConfigtoJSON['openconfig-interfaces:interfaces'].interface[0].config.type;
+                return transformConfigtoJSON['openconfig-interfaces:interfaces'].interface[0].config
+                    .type;
 
             case 'interfaces/interface/state/':
                 cmdbPath = '/api/v2/cmdb/system/interface/';
@@ -416,36 +425,36 @@ export class OpenConfigInterpreter {
                     interface_name: interfaceNameValue
                 });
                 monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                let stateData = {
+                const stateData = {
                     state: {
                         name: getRequest.results[0].name,
                         type: 'IF_ETHERNET',
                         mtu: getRequest.results[0].mtu,
                         'loopback-mode': false,
                         description: getRequest.results[0].description,
-                        enabled: getRequest.results[0].status === 'up' ? true : false,
+                        enabled: getRequest.results[0].status === 'up',
                         ifindex: getRequest.results[0].status.vindex,
                         'admin-status': getRequest.results[0].status === 'up' ? 'UP' : 'DOWN',
                         'oper-status': getRequest.results[0].status === 'up' ? 'UP' : 'DOWN',
-                        //logical TODO:look into this.
+                        // logical TODO:look into this.
                         counters: {
                             'in-octets': monitorInterface.rx_bytes,
                             'in-pkts': monitorInterface.rx_packets,
-                            //"in-unicast-pkts":
-                            //"in-broadcast-pkts":
-                            //"in-multicast-pkts":
-                            //"in-discards":
+                            // "in-unicast-pkts":
+                            // "in-broadcast-pkts":
+                            // "in-multicast-pkts":
+                            // "in-discards":
                             'in-errors': monitorInterface.rx_errors,
-                            //"in-unknown-protos":
-                            //"in-fcs-errors":
+                            // "in-unknown-protos":
+                            // "in-fcs-errors":
                             'out-octets': monitorInterface.tx_bytes,
                             'out-pkts': monitorInterface.tx_packets,
-                            //"out-unicast-pkts":
-                            //"out-broadcast-pkts":
-                            //"out-multicast-pkts":
-                            //"out-discards":
+                            // "out-unicast-pkts":
+                            // "out-broadcast-pkts":
+                            // "out-multicast-pkts":
+                            // "out-discards":
                             'out-errors': monitorInterface.tx_errors,
-                            //"carrier-transitions":
+                            // "carrier-transitions":
                             'last-clear': getUptimeRequest.results.utc_last_reboot
                         }
                     }
@@ -467,25 +476,25 @@ export class OpenConfigInterpreter {
                     interface_name: interfaceNameValue
                 });
                 monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                let counterData = {
+                const counterData = {
                     counters: {
                         'in-octets': monitorInterface.rx_bytes,
                         'in-pkts': monitorInterface.rx_packets,
-                        //"in-unicast-pkts":
-                        //"in-broadcast-pkts":
-                        //"in-multicast-pkts":
-                        //"in-discards":
+                        // "in-unicast-pkts":
+                        // "in-broadcast-pkts":
+                        // "in-multicast-pkts":
+                        // "in-discards":
                         'in-errors': monitorInterface.rx_errors,
-                        //"in-unknown-protos":
-                        //"in-fcs-errors":
+                        // "in-unknown-protos":
+                        // "in-fcs-errors":
                         'out-octets': monitorInterface.tx_bytes,
                         'out-pkts': monitorInterface.tx_packets,
-                        //"out-unicast-pkts":
-                        //"out-broadcast-pkts":
-                        //"out-multicast-pkts":
-                        //"out-discards":
+                        // "out-unicast-pkts":
+                        // "out-broadcast-pkts":
+                        // "out-multicast-pkts":
+                        // "out-discards":
                         'out-errors': monitorInterface.tx_errors,
-                        //"carrier-transitions":
+                        // "carrier-transitions":
                         'last-clear': getUptimeRequest.results.utc_last_reboot
                     }
                 };
@@ -496,7 +505,7 @@ export class OpenConfigInterpreter {
                     interface_name: interfaceNameValue
                 });
                 monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                let inPackets = {
+                const inPackets = {
                     'in-pkts': monitorInterface.rx_packets
                 };
                 return inPackets;
@@ -507,7 +516,7 @@ export class OpenConfigInterpreter {
                     interface_name: interfaceNameValue
                 });
                 monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                let inErrors = {
+                const inErrors = {
                     'in-errors': monitorInterface.rx_errors
                 };
                 return inErrors;
@@ -518,7 +527,7 @@ export class OpenConfigInterpreter {
                     interface_name: interfaceNameValue
                 });
                 monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                let outPkts = {
+                const outPkts = {
                     'out-pkts': monitorInterface.tx_packets
                 };
                 return outPkts;
@@ -529,7 +538,7 @@ export class OpenConfigInterpreter {
                     interface_name: interfaceNameValue
                 });
                 monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                let outErrors = {
+                const outErrors = {
                     'out-errors': monitorInterface.tx_errors
                 };
                 return outErrors;
@@ -540,7 +549,7 @@ export class OpenConfigInterpreter {
                     interface_name: interfaceNameValue
                 });
                 monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                let outOctets = {
+                const outOctets = {
                     'out-octets': monitorInterface.tx_bytes
                 };
                 return outOctets;
@@ -551,15 +560,15 @@ export class OpenConfigInterpreter {
                     interface_name: interfaceNameValue
                 });
                 monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                let inOctets = monitorInterface.rx_bytes;
-                //TODO:
+                const inOctets = monitorInterface.rx_bytes;
+                // TODO:
                 return inOctets;
             // Uptime returend via last reboot time.
             case 'interfaces/interface/state/counters/last-clear':
                 uptimePath = '/api/v2/monitor/web-ui/state';
                 getUptimeRequest = await this.getRequest(uptimePath, '');
 
-                let lastClear = {
+                const lastClear = {
                     'last-clear': getUptimeRequest.results.utc_last_reboot
                 };
                 return lastClear;
@@ -581,54 +590,74 @@ export class OpenConfigInterpreter {
     public JoinPathElems(pathElements) {
         log.info('Joining Path');
         for (const item of pathElements.request.path[0].elem) {
-            log.info('item ' + item);
+            log.info(`item ${item}`);
         }
     }
     public getFeature(call, callback) {
         callback(null, this.listFeature(call.request, callback));
     }
-    //Streaming RPC
+    // Streaming RPC
     public listFeature(call, callback) {
         log.info('checkFeature');
     }
 
     public async pollFortigate(path: string, data) {
-        let pollFortigate = new FortiGateAPIRequests(path, this.FORTIGATE_IP, this.FORTIGATE_API_KEY, false);
+        const pollFortigate = new FortiGateAPIRequests(
+            path,
+            this.FORTIGATE_IP,
+            this.FORTIGATE_API_KEY,
+            false
+        );
         return await pollFortigate.httpsGetRequest(data);
     }
     public async postConfig(path: string, data) {
-        let postConfig = new FortiGateAPIRequests(path, this.FORTIGATE_IP, this.FORTIGATE_API_KEY, false);
+        const postConfig = new FortiGateAPIRequests(
+            path,
+            this.FORTIGATE_IP,
+            this.FORTIGATE_API_KEY,
+            false
+        );
         return await postConfig.httpsPostRequest(data);
     }
     public async getRequest(path: string, data) {
-        let getRequest = new FortiGateAPIRequests(path, this.FORTIGATE_IP, this.FORTIGATE_API_KEY, false);
+        const getRequest = new FortiGateAPIRequests(
+            path,
+            this.FORTIGATE_IP,
+            this.FORTIGATE_API_KEY,
+            false
+        );
         return await getRequest.httpsGetRequest(data);
     }
     public async putConfig(path: string, data) {
-        let postConfig = new FortiGateAPIRequests(path, this.FORTIGATE_IP, this.FORTIGATE_API_KEY, false);
+        const postConfig = new FortiGateAPIRequests(
+            path,
+            this.FORTIGATE_IP,
+            this.FORTIGATE_API_KEY,
+            false
+        );
         return await postConfig.httpsPutRequest(data);
     }
 
     public async waitFunction() {
         return new Promise(resolve => setTimeout(resolve, this.POLL_INTERVAL));
     }
-    //Deprecated
+    // Deprecated
     public ConvertRestToYang(modelType, config) {
-        //TODO: convert to own class structure
-        //Only works with interface for now
+        // TODO: convert to own class structure
+        // Only works with interface for now
 
-        log.info('ModelType: ' + JSON.stringify(modelType));
+        log.info(`ModelType: ${JSON.stringify(modelType)}`);
         if (modelType.elem[0].name == 'interfaces') {
             log.info('interface selected in ConvertRestToYang');
             let type;
-            //TODO:
+            // TODO:
             if (config.results[0].type == 'physical') {
-                let type = 'IF_ETHERNET';
+                const type = 'IF_ETHERNET';
             } else {
                 type = 'IF_ETHERNET';
             }
-            //Currently assume interface was recieved.
-            let obj = openconfig_interfaces_model.eval(
+            // Currently assume interface was recieved.
+            const obj = openconfig_interfaces_model.eval(
                 {
                     'openconfig-interfaces:interfaces': {
                         interface: [
@@ -648,7 +677,7 @@ export class OpenConfigInterpreter {
             return obj.toJSON();
         }
     }
-    //Validated function is for non-config data, i.e readonly
+    // Validated function is for non-config data, i.e readonly
     public convertResttoYang_Validate(modelType, data) {}
 }
 

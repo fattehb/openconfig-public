@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+import * as fs from 'fs';
+import * as path from 'path';
 
 const LOG_DIRECTORY = path.join(__dirname, '..', 'logs');
 
@@ -61,7 +61,7 @@ class Log {
     }
 
     private _stringify(e: Error | object | string) {
-        let errString: string = '';
+        let errString = '';
         if (e instanceof Error) {
             errString = e.toString();
         } else if (typeof e === 'object') {
@@ -79,7 +79,7 @@ class Log {
      */
     private _write(
         msg: Error | object | string,
-        { overrideMode, level }: { overrideMode?: string, level?: string }
+        { overrideMode, level }: { overrideMode?: string; level?: string }
     ) {
         if (typeof msg !== 'string') {
             msg = this._stringify(msg);

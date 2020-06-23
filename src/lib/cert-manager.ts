@@ -1,10 +1,8 @@
-import { log } from './util/log';
+import { log } from '../util/log';
+import * as fs from 'fs';
+import * as grpc from 'grpc';
 
-const fs = require('fs');
-const grpc = require('grpc');
-
-const
-    DEFAULT_CA_CERT = '../certs/ca.crt',
+const DEFAULT_CA_CERT = '../certs/ca.crt',
     DEFAULT_PRIVATE_KEY = '../certs/server.key',
     DEFAULT_CERT_CHAIN = '../certs/server.crt';
 const CHECK_CLIENT_CERTIFICATE = false;
@@ -35,10 +33,15 @@ export class CertificateManager {
         if (this._hasSecuredCredentials()) {
             log.info('Secured credentials are created.');
             return grpc.ServerCredentials.createSsl(
-                fs.readFileSync(this._caCert), [{
-                private_key: fs.readFileSync(this._serverPrivateKey),
-                cert_chain: fs.readFileSync(this._serverCertChain)
-            }], this._checkClientCertificate)
+                fs.readFileSync(this._caCert),
+                [
+                    {
+                        private_key: fs.readFileSync(this._serverPrivateKey),
+                        cert_chain: fs.readFileSync(this._serverCertChain)
+                    }
+                ],
+                this._checkClientCertificate
+            );
         } else {
             log.info('Insecured credentials are created.');
             return grpc.ServerCredentials.createInsecure();
@@ -60,8 +63,8 @@ export class CertificateManager {
                 log.warn(unavailable);
                 return false;
             }
-        } catch(err) {
-            log.error(err)
+        } catch (err) {
+            log.error(err);
             return false;
         }
     }

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import https from 'https';
-import { log } from './util/log';
+import { log } from '../util/log';
 
 export class FortiGateAPIRequests {
     private path: string;
@@ -14,14 +14,14 @@ export class FortiGateAPIRequests {
         this.rejectCerts = rejectCerts;
     }
     public async httpsGetRequest(data) {
-        var url = 'https://' + this.FORTIGATE_IP + this.path;
+        const url = `https://${this.FORTIGATE_IP}${this.path}`;
         const agent = new https.Agent({
             rejectUnauthorized: this.rejectCerts
         });
-        var options = {
+        const options = {
             httpsAgent: agent,
             headers: {
-                Authorization: 'Bearer ' + this.API_KEY
+                Authorization: `Bearer ${this.API_KEY}`
             }
         };
         try {
@@ -33,16 +33,16 @@ export class FortiGateAPIRequests {
         // TODO: why throwing a console.error here?
         throw console.error(`Error retrieving  data from Fortigate: ${url} `);
     }
-    //TODO: change generic axios, with method specified.
+    // TODO: change generic axios, with method specified.
     public async httpsPostRequest(data) {
-        var url = 'https://' + this.FORTIGATE_IP + this.path;
+        const url = `https://${this.FORTIGATE_IP}${this.path}`;
         const agent = new https.Agent({
             rejectUnauthorized: this.rejectCerts
         });
-        var options = {
+        const options = {
             httpsAgent: agent,
             headers: {
-                Authorization: 'Bearer ' + this.API_KEY
+                Authorization: `Bearer ${this.API_KEY}`
             }
         };
         try {
@@ -54,16 +54,16 @@ export class FortiGateAPIRequests {
         // TODO: why throwing a console.error here?
         throw console.error(`Error retrieving data from Fortigate: ${url} `);
     }
-    //TODO: consolidate methods.
+    // TODO: consolidate methods.
     public async httpsPutRequest(data) {
-        var url = 'https://' + this.FORTIGATE_IP + this.path;
+        const url = `https://${this.FORTIGATE_IP}${this.path}`;
         const agent = new https.Agent({
             rejectUnauthorized: this.rejectCerts
         });
-        var options = {
+        const options = {
             httpsAgent: agent,
             headers: {
-                Authorization: 'Bearer ' + this.API_KEY
+                Authorization: `Bearer ${this.API_KEY}`
             }
         };
         try {
