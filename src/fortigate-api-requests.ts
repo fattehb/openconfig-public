@@ -1,5 +1,6 @@
 import axios from 'axios';
 import https from 'https';
+import { log } from './util/log';
 
 export class FortiGateAPIRequests {
     private path: string;
@@ -27,8 +28,9 @@ export class FortiGateAPIRequests {
             const response = await axios.get(url, options);
             return response.data;
         } catch (err) {
-            console.log(err);
+            log.error(err);
         }
+        // TODO: why throwing a console.error here?
         throw console.error(`Error retrieving  data from Fortigate: ${url} `);
     }
     //TODO: change generic axios, with method specified.
@@ -47,8 +49,9 @@ export class FortiGateAPIRequests {
             const response = await axios.post(url, data, options);
             return response.data;
         } catch (err) {
-            console.log(err);
+            log.error(err);
         }
+        // TODO: why throwing a console.error here?
         throw console.error(`Error retrieving data from Fortigate: ${url} `);
     }
     //TODO: consolidate methods.
@@ -67,8 +70,9 @@ export class FortiGateAPIRequests {
             const response = await axios.put(url, data, options);
             return response.data;
         } catch (err) {
-            console.log(err);
+            log.error(err);
         }
+        // TODO: why throwing a console.error here?
         throw console.error(`Error retrieving data from Fortigate: ${url} `);
     }
 }
