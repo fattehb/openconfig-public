@@ -1,4 +1,4 @@
-import { log } from './util/log';
+import { log } from '../util/log';
 
 var grpc = require('grpc');
 var protoLoader = require('@grpc/proto-loader');
@@ -6,7 +6,7 @@ var PROTO_PATH = __dirname + '/gnmi/proto/gnmi/gnmi.proto';
 import * as CryptoJS from 'crypto-js';
 //TODO: seperate openConfigInterpreter logic.
 //TODO:ENV vars should be passed to gnmiProtoHandler
-import { OpenConfigInterpreter } from './index';
+import { OpenConfigInterpreter } from '../index';
 const { FORTIGATE_API_KEY, FORTIGATE_IP } = process.env;
 
 export class GnmiProtoHandlers {
