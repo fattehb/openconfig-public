@@ -110,8 +110,8 @@ class Log {
      * Log error message in console.
      *
      */
-    error(msg: Error | object | string) {
-        this._error(msg, LOG_MODE.CONSOLE);
+    error(msg: Error | object | string, overrideMode?: string) {
+        this._error(msg, overrideMode);
     }
 
     private _error(msg: Error | object | string, overrideMode?: string) {
@@ -126,8 +126,8 @@ class Log {
      * Log info message in console.
      *
      */
-    info(msg: object | string) {
-        this._info(msg, LOG_MODE.CONSOLE);
+    info(msg: object | string, overrideMode?: string) {
+        this._info(msg, overrideMode);
     }
 
     private _info(msg: Error | object | string, overrideMode?: string) {
@@ -142,8 +142,8 @@ class Log {
      * Log warn message in console.
      *
      */
-    warn(msg: Error | object | string) {
-        this._warn(msg, LOG_MODE.CONSOLE);
+    warn(msg: Error | object | string, overrideMode?: string) {
+        this._warn(msg, overrideMode);
     }
 
     private _warn(msg: Error | object | string, overrideMode?: string) {

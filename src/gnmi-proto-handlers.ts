@@ -1,3 +1,5 @@
+import { log } from './util/log';
+
 var grpc = require('grpc');
 var protoLoader = require('@grpc/proto-loader');
 var PROTO_PATH = __dirname + '/gnmi/proto/gnmi/gnmi.proto';
@@ -11,7 +13,7 @@ export class GnmiProtoHandlers {
     //TODO:clean up constructors.
     //Naming Based of gnmi.proto
     public async Set(setRequest, callback) {
-        console.log('set request prefix: ', JSON.stringify(setRequest));
+        log.info('set request prefix: ', JSON.stringify(setRequest));
         let fullPath = '/';
         let value;
         let operationValue;
@@ -24,7 +26,7 @@ export class GnmiProtoHandlers {
         // Named to correspond to GNMI specs.
         let setConfig = new OpenConfigInterpreter(5000, FORTIGATE_IP, FORTIGATE_API_KEY);
         let setModel = setConfig.setModelRequests(setRequest.request);
-        console.log('SetModel Return' + JSON.stringify(setModel));
+        log.info('SetModel Return' + JSON.stringify(setModel));
         let SetResponse = {
             timeStamp: Date.now(),
             prefix: {
@@ -42,14 +44,14 @@ export class GnmiProtoHandlers {
     }
 
     public async Capabilities(CapabilityRequest) {
-        console.log('Capabilities Not implmented yet.');
+        log.info('Capabilities Not implmented yet.');
     }
     public async Get(GetRequest, callback) {
         //TODO: fix implmentation of openconfig interpreter
         let getConfig = new OpenConfigInterpreter(5000, FORTIGATE_IP, FORTIGATE_API_KEY);
 
-        console.log('GetRequest ' + JSON.stringify(GetRequest));
-        console.log('Joining Path');
+        log.info('GetRequest ' + JSON.stringify(GetRequest));
+        log.info('Joining Path');
 
         let fullPath;
         let translatedPath = await getConfig.translatePath(GetRequest.request);
@@ -84,12 +86,12 @@ export class GnmiProtoHandlers {
         let getConfig = new OpenConfigInterpreter(5000, FORTIGATE_IP, FORTIGATE_API_KEY);
         call.on('data', async function (note) {
             let fullPath = '';
-            console.log(JSON.stringify(note));
+            log.info(JSON.stringify(note));
             for (const item of note.subscribe.subscription[0].path.elem) {
                 fullPath = fullPath + item.name + '/';
                 //TODO account for multiple names etc:
 
-                console.log('item ' + JSON.stringify(item));
+                log.info('item ' + JSON.stringify(item));
             }
 
             let pollCount = 0;
@@ -105,12 +107,12 @@ export class GnmiProtoHandlers {
                     pollCount++;
                     let translatedPath = await getConfig.translatePath(note.subscribe);
                     if (note.subscribe.subscription[0].mode === 'ON_CHANGE') {
-                        console.log('Subscription Mode set to ON_CHANGE');
+                        log.info('Subscription Mode set to ON_CHANGE');
                         if (diffApiCalls.length > 1) {
-                            console.log('TODO');
+                            log.info('TODO');
                         }
                     } else {
-                        console.log(`Subscription mode set to ${note.subscribe.subscription[0].mode}`);
+                        log.info(`Subscription mode set to ${note.subscribe.subscription[0].mode}`);
                     }
                     let SubscribeResponse = {
                         update: {
