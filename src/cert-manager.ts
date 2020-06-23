@@ -33,28 +33,35 @@ export class CertificateManager {
 
     public createServerCredentials() {
         if (this._hasSecuredCredentials()) {
-            console.log('Secured credentials are created.');
+            log.info('Secured credentials are created.');
             return grpc.ServerCredentials.createSsl(
                 fs.readFileSync(this._caCert), [{
                 private_key: fs.readFileSync(this._serverPrivateKey),
                 cert_chain: fs.readFileSync(this._serverCertChain)
             }], this._checkClientCertificate)
         } else {
-            console.log('Insecured credentials are created.');
+            log.info('Insecured credentials are created.');
             return grpc.ServerCredentials.createInsecure();
         }
     }
 
     private _hasSecuredCredentials() {
         try {
-            if (this._certs.every(cert => fs.existsSync(cert))) {
-                // all certificates are available
-                return true;
+            const unavailable = [];
+            for (const cert of this._certs) {
+                if (!fs.existsSync(cert)) {
+                    unavailable.push(cert);
+                }
             }
-            console.log('Not all certificate files are available.');
-            return false;
+            if (!unavailable.length) {
+                return true;
+            } else {
+                log.warn('The following certificates are not available:');
+                log.warn(unavailable);
+                return false;
+            }
         } catch(err) {
-            console.error(err)
+            log.error(err)
             return false;
         }
     }

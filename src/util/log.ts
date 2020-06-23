@@ -1,4 +1,3 @@
-'use strict';
 const fs = require('fs');
 const path = require('path');
 
@@ -62,11 +61,13 @@ class Log {
     }
 
     private _stringify(e: Error | object | string) {
-        let errString = '';
+        let errString: string = '';
         if (e instanceof Error) {
             errString = e.toString();
         } else if (typeof e === 'object') {
             errString = JSON.stringify(e, null, 4);
+        } else {
+            errString = e;
         }
         return errString;
     }
