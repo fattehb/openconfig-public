@@ -1,6 +1,6 @@
 import axios from 'axios';
 import https from 'https';
-import { log } from '../util/log';
+import { log } from './util/log';
 
 export class FortiGateAPIRequests {
     private path: string;

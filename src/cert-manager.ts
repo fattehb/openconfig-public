@@ -1,4 +1,4 @@
-import { log } from '../util/log';
+import { log } from './util/log';
 
 const fs = require('fs');
 const grpc = require('grpc');
