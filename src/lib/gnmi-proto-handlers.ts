@@ -6,7 +6,7 @@ const PROTO_PATH = `${__dirname}/gnmi/proto/gnmi/gnmi.proto`;
 import * as CryptoJS from 'crypto-js';
 // TODO: seperate openConfigInterpreter logic.
 // TODO:ENV vars should be passed to gnmiProtoHandler
-import { OpenConfigInterpreter } from '../index';
+import { OpenConfigInterpreter } from './open-config-interpreter';
 const { FORTIGATE_API_KEY, FORTIGATE_IP } = process.env;
 
 export class GnmiProtoHandlers {
@@ -24,7 +24,8 @@ export class GnmiProtoHandlers {
         // TODO: provide generic function to build this JSON
         // TODO: error handling return.
         // Named to correspond to GNMI specs.
-        const setConfig = new OpenConfigInterpreter(5000, FORTIGATE_IP, FORTIGATE_API_KEY);
+        const setConfig = new OpenConfigInterpreter(
+            OpenConfigInterpreter.DEFAULT_POLL_INTERVAL, FORTIGATE_IP, FORTIGATE_API_KEY);
         const setModel = setConfig.setModelRequests(setRequest.request);
         log.info(`SetModel Return${JSON.stringify(setModel)}`);
         const SetResponse = {
@@ -48,7 +49,8 @@ export class GnmiProtoHandlers {
     }
     public async Get(GetRequest, callback) {
         // TODO: fix implmentation of openconfig interpreter
-        const getConfig = new OpenConfigInterpreter(5000, FORTIGATE_IP, FORTIGATE_API_KEY);
+        const getConfig = new OpenConfigInterpreter(
+            OpenConfigInterpreter.DEFAULT_POLL_INTERVAL, FORTIGATE_IP, FORTIGATE_API_KEY);
 
         log.info(`GetRequest ${JSON.stringify(GetRequest)}`);
         log.info('Joining Path');
@@ -83,7 +85,8 @@ export class GnmiProtoHandlers {
     }
 
     public Subscribe(call, callback) {
-        const getConfig = new OpenConfigInterpreter(5000, FORTIGATE_IP, FORTIGATE_API_KEY);
+        const getConfig = new OpenConfigInterpreter(
+            OpenConfigInterpreter.DEFAULT_POLL_INTERVAL, FORTIGATE_IP, FORTIGATE_API_KEY);
         call.on('data', async function (note) {
             let fullPath = '';
             log.info(JSON.stringify(note));
