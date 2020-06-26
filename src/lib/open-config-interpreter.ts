@@ -1,20 +1,23 @@
 import { log } from '../util/log';
 import { FortiGateAPIRequests } from './fortigate-api-requests';
+import * as path from 'path';
 // TODO: fix yang-js imports
 const Yang = require('yang-js');
 
-const openconfigInterfacesModel = Yang.import(
-    '../openconfig/release/models/interfaces/openconfig-interfaces.yang'
-);
-
 class OpenConfigInterpreter {
     static DEFAULT_POLL_INTERVAL: number = 5000;
+
+    private _openconfigInterfacesModel;
 
     constructor(
         private readonly _pollInterval: number, // milliseconds
         private readonly _fortigateIp: string,
         private readonly _fortigateApiKey: string
-    ) { }
+    ) {
+        this._openconfigInterfacesModel = Yang.import(path.resolve(
+            __dirname, '../openconfig/release/models/interfaces/openconfig-interfaces.yang')
+        );
+    }
 
     public async putInterface(call, callback) {
         log.info('called putInterface');
@@ -205,7 +208,7 @@ class OpenConfigInterpreter {
                 log.info(`FortiGate Rest Response: ${JSON.stringify(getMontiorRequest)}`);
 
                 // Convert Data
-                configObj = openconfigInterfacesModel.eval(
+                configObj = this._openconfigInterfacesModel.eval(
                     {
                         'openconfig-interfaces:interfaces': {
                             interface: [
@@ -278,7 +281,7 @@ class OpenConfigInterpreter {
                 getRequest = await this.getRequest(fullPath, data);
 
                 // Convert Data
-                const configValues = openconfigInterfacesModel.eval(
+                const configValues = this._openconfigInterfacesModel.eval(
                     {
                         'openconfig-interfaces:interfaces': {
                             interface: [
@@ -305,7 +308,7 @@ class OpenConfigInterpreter {
                 getRequest = await this.getRequest(fullPath, data);
 
                 // Convert Data
-                const getNameConfig = openconfigInterfacesModel.eval(
+                const getNameConfig = this._openconfigInterfacesModel.eval(
                     {
                         'openconfig-interfaces:interfaces': {
                             interface: [
@@ -333,7 +336,7 @@ class OpenConfigInterpreter {
                 getRequest = await this.getRequest(fullPath, data);
 
                 // Convert Data
-                configObj = openconfigInterfacesModel.eval(
+                configObj = this._openconfigInterfacesModel.eval(
                     {
                         'openconfig-interfaces:interfaces': {
                             interface: [
@@ -598,7 +601,7 @@ class OpenConfigInterpreter {
                 type = 'IF_ETHERNET';
             }
             // Currently assume interface was recieved.
-            const obj = openconfigInterfacesModel.eval(
+            const obj = this._openconfigInterfacesModel.eval(
                 {
                     'openconfig-interfaces:interfaces': {
                         interface: [

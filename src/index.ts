@@ -3,6 +3,7 @@ const Yang = require('yang-js');
 import { GnmiProtoHandlers } from './lib/gnmi-proto-handlers';
 import { CertificateManager } from './lib/cert-manager';
 import { log } from './util/log';
+import * as path from 'path';
 
 const listenOnPort = 6031;
 
@@ -19,26 +20,28 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 });
 const loadgNMIProto = grpc.loadPackageDefinition(packageDefinition).gnmi;
 // TODO: move imports to package.json file.
-const importTest = Yang.import('./openconfig/third_party/ietf/ietf-interfaces.yang');
+const importTest = Yang.import(
+    `${__dirname}/openconfig/third_party/ietf/ietf-interfaces.yang`
+);
 const openconfig_yang_types_model = Yang.import(
-    './openconfig/release/models/types/openconfig-yang-types.yang'
+    `${__dirname}/openconfig/release/models/types/openconfig-yang-types.yang`
 );
 const openconfig_type_model = Yang.import(
-    './openconfig/release/models/types/openconfig-types.yang'
+    `${__dirname}/openconfig/release/models/types/openconfig-types.yang`
 );
 const openconfig_extensions_model = Yang.import(
-    './openconfig/release/models/openconfig-extensions.yang'
+    `${__dirname}/openconfig/release/models/openconfig-extensions.yang`
 );
 
 exports.main = async (context, req, res): Promise<void> => {
     log.init();
     log.info('Function Started');
     const yangImportList = [
-        './openconfig/third_party/ietf/ietf-interfaces.yang',
-        './openconfig/release/models/types/openconfig-yang-types.yang',
-        './openconfig/release/models/types/openconfig-types.yang',
-        './openconfig/release/models/openconfig-extensions.yang',
-        './openconfig/release/models/interfaces/openconfig-interfaces.yang'
+        `${__dirname}/openconfig/third_party/ietf/ietf-interfaces.yang`,
+        `${__dirname}/openconfig/release/models/types/openconfig-yang-types.yang`,
+        `${__dirname}/openconfig/release/models/types/openconfig-types.yang`,
+        `${__dirname}/openconfig/release/models/openconfig-extensions.yang`,
+        `${__dirname}/openconfig/release/models/interfaces/openconfig-interfaces.yang`
     ];
     // gRPC
     const gRPCServiceHandler = new GnmiProtoHandlers();
