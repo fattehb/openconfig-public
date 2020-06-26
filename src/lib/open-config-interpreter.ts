@@ -4,7 +4,7 @@ import { FortiGateAPIRequests } from './fortigate-api-requests';
 const Yang = require('yang-js');
 
 const openconfigInterfacesModel = Yang.import(
-    '../../../public/release/models/interfaces/openconfig-interfaces.yang'
+    '../openconfig/release/models/interfaces/openconfig-interfaces.yang'
 );
 
 class OpenConfigInterpreter {
