@@ -7,7 +7,9 @@ const Yang = require('yang-js');
 class OpenConfigInterpreter {
     static DEFAULT_POLL_INTERVAL: number = 5000;
 
-    private _openconfigInterfacesModel;
+    private _openconfigInterfacesModel: {
+        eval: Function // function
+    };
 
     constructor(
         private readonly _pollInterval: number, // milliseconds
