@@ -104,7 +104,8 @@ export class GnmiProtoHandlers {
                     tempTime = Date.now();
                     pollCount++;
 
-                    let translatedPath = await getConfig.translatePath(note.subscribe);
+                    let translatedPath: object = await getConfig.translatePath(note.subscribe);
+                    console.log('TypeOF' + typeof translatedPath);
                     if (note.subscribe.subscription[0].mode === 'ON_CHANGE') {
                         console.log('Subscription Mode set to ON_CHANGE');
                         let md5HashNewReturn = CryptoJS.MD5(JSON.stringify(translatedPath)).toString();
@@ -129,7 +130,7 @@ export class GnmiProtoHandlers {
                                             path: { pathKey: note.subscribe.subscription[0].path },
 
                                             val: {
-                                                string_val: JSON.stringify(translatedPath)
+                                                json_ietf_val: Buffer.from(JSON.stringify(translatedPath))
                                             },
 
                                             duplicates: 0
@@ -144,6 +145,7 @@ export class GnmiProtoHandlers {
                         }
                     } else {
                         console.log(`Subscription mode set to ${note.subscribe.subscription[0].mode}`);
+
                         let SubscribeResponse = {
                             update: {
                                 timeStamp: Date.now(),
@@ -156,7 +158,7 @@ export class GnmiProtoHandlers {
                                         //TODO: Pathkey
                                         path: { pathKey: note.subscribe.subscription[0].path },
                                         val: {
-                                            string_val: JSON.stringify(translatedPath)
+                                            json_ietf_val: Buffer.from(JSON.stringify(translatedPath))
                                         },
                                         duplicates: 0
                                     }
