@@ -77,6 +77,7 @@ export class OpenConfigInterpreter {
             postRequest,
             typeValue,
             postValue;
+        let pathArray = [];
         console.log('pathrequest for set ' + JSON.stringify(pathRequest));
         if (pathRequest?.update) {
             interfaceNameValue = pathRequest.update[0].path.elem[1].key.name;
@@ -91,160 +92,181 @@ export class OpenConfigInterpreter {
             for (const item of pathRequest.update[0].path.elem) {
                 //TODO: account for multiple names etc:
                 fullPath = fullPath + item.name + '/';
+                pathArray.push(item.name);
             }
             console.log(fullPath);
         }
-        switch (fullPath) {
-            case 'interfaces/interface/':
-                // From the yang docs:
-                // "The type of the interface.
+        if (pathArray[0] === 'interfaces') {
+            switch (fullPath) {
+                case 'interfaces/interface/':
+                    // From the yang docs:
+                    // "The type of the interface.
 
-                // When an interface entry is created, a server MAY
-                // initialize the type leaf with a valid value, e.g., if it
-                // is possible to derive the type from the name of the
-                // interface.
+                    // When an interface entry is created, a server MAY
+                    // initialize the type leaf with a valid value, e.g., if it
+                    // is possible to derive the type from the name of the
+                    // interface.
+                    // value that can never be used by the system, e.g., if the
+                    // type is not supported or if the type does not match the
+                    // name of the interface, the server MUST reject the request.
+                    // A NETCONF server MUST reply with an rpc-error with the
+                    // error-tag 'invalid-value' in this case.";
 
-                // If a client tries to set the type of an interface to a
-                // value that can never be used by the system, e.g., if the
-                // type is not supported or if the type does not match the
-                // name of the interface, the server MUST reject the request.
-                // A NETCONF server MUST reply with an rpc-error with the
-                // error-tag 'invalid-value' in this case.";
+                    //This means that we must create an interface type, based on the name:
+                    let interfaceType;
 
-                //This means that we must create an interface type, based on the name:
-                let interfaceType;
+                    const acceptedInterfaceTypes = ['physical', 'loopback', 'aggregate'];
+                    // 'aggregate', 'redundant', 'tunnel', 'loopback'];
 
-                const acceptedInterfaceTypes = ['physical', 'loopback', 'aggregate'];
-                // 'aggregate', 'redundant', 'tunnel', 'loopback'];
-
-                for (let i of acceptedInterfaceTypes) {
-                    if (postValue && postValue.toLowerCase().includes(i)) {
-                        interfaceType = i;
-                        console.log(`Assuming interface type: ${i}`);
+                    for (let i of acceptedInterfaceTypes) {
+                        if (postValue && postValue.toLowerCase().includes(i)) {
+                            interfaceType = i;
+                            console.log(`Assuming interface type: ${i}`);
+                        }
                     }
-                }
-                if (interfaceType === null) {
-                    //TODO: errors needs to be sent to the gNMI client instead.
-                    const err = new Error(`
+                    if (interfaceType === null) {
+                        //TODO: errors needs to be sent to the gNMI client instead.
+                        const err = new Error(`
                     Could not determine interfacetype from name ${interfaceNameValue}. Current accepted types are:
                     physical loopback
                     `);
-                    console.error(err.message);
-                    throw err;
-                }
-
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-                fullPath = cmdbPath;
-                data = {
-                    name: postValue, //since we are creating one here. We can determine form the value provided.
-                    vdom: 'root',
-                    type: interfaceType
-                };
-                console.log('Post Data' + JSON.stringify(data));
-                postRequest = await this.postConfig(fullPath, data);
-
-                return postRequest;
-            case 'interfaces/interface/config/enabled/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-
-                fullPath = cmdbPath + interfaceNameValue;
-                data = {
-                    name: interfaceNameValue,
-                    status: postValue === true ? 'up' : 'down'
-                };
-
-                postRequest = await this.putConfig(fullPath, data);
-                return postRequest;
-            case 'interfaces/interface/config/mtu/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-
-                fullPath = cmdbPath + interfaceNameValue;
-                data = {
-                    name: interfaceNameValue,
-                    mtu: postValue
-                };
-
-                postRequest = await this.putConfig(fullPath, data);
-                return postRequest;
-            case 'interfaces/interface/config/description/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-
-                fullPath = cmdbPath + interfaceNameValue;
-                data = {
-                    name: interfaceNameValue,
-                    description: postValue
-                };
-
-                postRequest = await this.putConfig(fullPath, data);
-
-                return postRequest;
-            case 'interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/ip/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-
-                fullPath = cmdbPath + interfaceNameValue;
-                data = {
-                    name: interfaceNameValue,
-                    ip: postValue,
-                    mode: 'static' //TODO: should we assume this?
-                };
-
-                postRequest = await this.putConfig(fullPath, data);
-
-                return postRequest;
-            case 'interfaces/interface/subinterfaces/subinterface/ipv4/config/dhcp-client/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-
-                fullPath = cmdbPath + interfaceNameValue;
-                data = {
-                    name: interfaceNameValue,
-                    mode: postValue === true ? 'dhcp' : 'static'
-                };
-
-                postRequest = await this.putConfig(fullPath, data);
-
-                return postRequest;
-            case 'interfaces/interface/subinterfaces/subinterface/ipv4/config/mtu/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-
-                fullPath = cmdbPath + interfaceNameValue;
-                data = {
-                    name: interfaceNameValue,
-                    mtu: postValue
-                };
-
-                postRequest = await this.putConfig(fullPath, data);
-
-                return postRequest;
-            case 'interfaces/interface/subinterfaces/subinterface/ipv4/config/enabled/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-
-                fullPath = cmdbPath + interfaceNameValue;
-                data = {
-                    name: interfaceNameValue,
-                    status: postValue === true ? 'up' : 'down'
-                };
-
-                postRequest = await this.putConfig(fullPath, data);
-
-                return postRequest;
-            case 'interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/ip/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-
-                fullPath = cmdbPath + interfaceNameValue;
-                data = {
-                    name: interfaceNameValue,
-                    ipv6: {
-                        'ip6-address': postValue,
-                        'ip6-mode': 'static'
+                        console.error(err.message);
+                        throw err;
                     }
-                };
 
-                postRequest = await this.putConfig(fullPath, data);
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    fullPath = cmdbPath;
+                    data = {
+                        name: postValue, //since we are creating one here. We can determine form the value provided.
+                        vdom: 'root',
+                        type: interfaceType
+                    };
+                    console.log('Post Data' + JSON.stringify(data));
+                    postRequest = await this.postConfig(fullPath, data);
 
-                return postRequest;
-            default:
-                console.log('Path not implmented yet');
-                return -1;
+                    return postRequest;
+                case 'interfaces/interface/config/enabled/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        status: postValue === true ? 'up' : 'down'
+                    };
+
+                    postRequest = await this.putConfig(fullPath, data);
+                    return postRequest;
+                case 'interfaces/interface/config/mtu/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        mtu: postValue
+                    };
+
+                    postRequest = await this.putConfig(fullPath, data);
+                    return postRequest;
+                case 'interfaces/interface/config/description/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        description: postValue
+                    };
+
+                    postRequest = await this.putConfig(fullPath, data);
+
+                    return postRequest;
+                case 'interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/ip/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        ip: postValue,
+                        mode: 'static' //TODO: should we assume this?
+                    };
+
+                    postRequest = await this.putConfig(fullPath, data);
+
+                    return postRequest;
+                case 'interfaces/interface/subinterfaces/subinterface/ipv4/config/dhcp-client/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        mode: postValue === true ? 'dhcp' : 'static'
+                    };
+
+                    postRequest = await this.putConfig(fullPath, data);
+
+                    return postRequest;
+                case 'interfaces/interface/subinterfaces/subinterface/ipv4/config/mtu/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        mtu: postValue
+                    };
+
+                    postRequest = await this.putConfig(fullPath, data);
+
+                    return postRequest;
+                case 'interfaces/interface/subinterfaces/subinterface/ipv4/config/enabled/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        status: postValue === true ? 'up' : 'down'
+                    };
+
+                    postRequest = await this.putConfig(fullPath, data);
+
+                    return postRequest;
+                case 'interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/ip/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        ipv6: {
+                            'ip6-address': postValue,
+                            'ip6-mode': 'static'
+                        }
+                    };
+
+                    postRequest = await this.putConfig(fullPath, data);
+
+                    return postRequest;
+                default:
+                    console.log('Path not implmented yet');
+                    return -1;
+            }
+        } else if (pathArray[0] === 'local-routes') {
+            switch (fullPath) {
+                //TODO:
+                case 'local-routes/static-routes/':
+                    cmdbPath = '/api/v2/cmdb/router/static/';
+
+                    fullPath = cmdbPath;
+                    data = {
+                        status: 'enable'
+                    };
+
+                    postRequest = await this.postConfig(fullPath, data);
+
+                    return postRequest;
+                default:
+                    console.log('Path not implmented yet');
+                    return -1;
+
+                // Return evaluated config.
+            }
         }
     }
 
@@ -716,6 +738,7 @@ export class OpenConfigInterpreter {
                     monitorPath = '/api/v2/monitor/system/interface/';
                     uptimePath = '/api/v2/monitor/web-ui/state';
                     let proxyarp = '/api/v2/cmdb/system/proxy-arp';
+                    let vpnTunnel = '/api/v2/monitor/vpn/ipsec';
                     // let getProxyArp = await this.getRequest(proxyarp, {});
                     let neighborsPath = '/api/v2/monitor/network/lldp/neighbors';
                     //let getNeighbors = await this.getRequest(neighborsPath, {});
@@ -727,12 +750,13 @@ export class OpenConfigInterpreter {
                         count: 10000,
                         id: 0
                     });
+                    let getVPNTunnel = await this.getRequest(vpnTunnel, {});
                     getUptimeRequest = await this.getRequest(uptimePath, '');
                     fullPath = cmdbPath + interfaceNameValue;
                     data = '';
                     getRequest = await this.getRequest(fullPath, data);
                     getMontiorRequest = await this.getRequest(monitorPath, {
-                        interface_name: interfaceNameValue
+                        //interface_name: interfaceNameValue
                     });
                     let dot1xPathRequest = await this.getRequest(dot1xPath, data);
 
@@ -743,7 +767,43 @@ export class OpenConfigInterpreter {
                     console.log('IPV4 call getMontiorRequest' + JSON.stringify(getMontiorRequest));
                     console.log('IPV4 call getRequest' + JSON.stringify(getRequest));
                     console.log('IPV4 call dot1xPathRequest' + JSON.stringify(dot1xPathRequest));
+                    console.log('IPV4 call vpn' + JSON.stringify(getVPNTunnel));
+
                     model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    return model;
+                case 'interfaces/interface/tunnel/':
+                    console.log('path not in cases, attempting to lookup.');
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    let tunnelInfoPath = '/api/v2/monitor/system/available-interfaces';
+                    let tunnelPath = '/api/v2/monitor/vpn/ipsec';
+                    let getTunnel = await this.getRequest(tunnelPath, {});
+                    let getTunnelInfo = await this.getRequest(tunnelInfoPath, {
+                        datasource: true,
+                        start: 0,
+                        count: 10000,
+                        id: 0
+                    });
+
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        getRequest,
+                        monitorInterface,
+                        getUptimeRequest,
+                        null,
+                        getTunnel,
+                        getTunnelInfo
+                    );
+                    console.log('Returned Model' + JSON.stringify(model));
                     return model;
                 default:
                     console.log('path not in cases, attempting to lookup.');

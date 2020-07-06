@@ -1,8 +1,17 @@
 import axios from 'axios';
 import https from 'https';
+import { truncateSync } from 'fs';
 
 export class YangModel {
-    public interface(path, getRequest?, monitorInterface?, getUptimeRequest?, proxyArpData?) {
+    public interface(
+        path,
+        getRequest?,
+        monitorInterface?,
+        getUptimeRequest?,
+        proxyArpData?,
+        tunnelData?,
+        tunnelInterfaceInfo?
+    ) {
         //lookup = {"interfaces/interface":
         // ["endpointa", "endpointb"],
         //"interfaces/interface/subinterfaces/subinterface/status": ["endpoint c"]}
@@ -249,7 +258,9 @@ export class YangModel {
                         dot1x: {
                             config: {}
                         }
-                    }
+                    },
+
+                    tunnel: this.assembleTunnelData(tunnelData, tunnelInterfaceInfo)
                 }
             }
         };
@@ -386,5 +397,53 @@ export class YangModel {
         } else {
             return '';
         }
+    }
+    public assembleTunnelData(tunnelMonitorInfo, tunnelInterfaceInfo): void | Object {
+        let dataReturn;
+        if (tunnelMonitorInfo && tunnelInterfaceInfo) {
+            for (let i of tunnelInterfaceInfo.results) {
+                //TODO accept interfaceID from name data.
+                if (i.type === 'tunnel' && i.tunnel_interface === 'port1') {
+                    dataReturn = {
+                        tunnel: {
+                            config: {
+                                src: 'todo',
+                                dst: 'todo',
+                                ttl: 'todo',
+                                'gre-key': 'todo'
+                            },
+                            //TODO tie state info with proper vpn tunnel
+                            state: {
+                                ipv4: {
+                                    addresses: {
+                                        address: {
+                                            ip: i.ipv4_addresses[0].ip
+                                        },
+                                        config: {},
+                                        state: {
+                                            counters: {
+                                                // 'in-octets': monitorInterface?.rx_bytes,
+                                                'in-pkts': tunnelMonitorInfo?.results[0]?.incoming_bytes,
+                                                //in-forwarded-pkts?
+                                                //in-forwarded-octets?
+                                                /// 'in-error-pkts': monitorInterface?.rx_errors,
+                                                // 'out-octets': monitorInterface?.tx_bytes,
+                                                'out-pkts': tunnelMonitorInfo?.results[0]?.outgoing_bytes
+                                                //out-forwarded-pkts?
+                                                //out-forwarded-octets?
+                                                //'out-errors-pkts': monitorInterface?.tx_errors
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    };
+                }
+            }
+
+            return dataReturn;
+            //
+        } else return;
     }
 }
