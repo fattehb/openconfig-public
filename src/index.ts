@@ -82,8 +82,7 @@ export class OpenConfigInterpreter {
         let pathArray = [];
         console.log('pathrequest for set ' + JSON.stringify(pathRequest));
         if (pathRequest?.update) {
-            interfaceNameValue = pathRequest.update[0].path.elem[1].key.name;
-
+            interfaceNameValue = pathRequest?.update?.[0]?.path?.elem[1]?.key?.name;
             // Value presented by the gNMI
             // Value wil be int_val/string_val etc. Can easily tell which, by grabbing value
             typeValue = pathRequest.update[0].val.value;
@@ -245,20 +244,82 @@ export class OpenConfigInterpreter {
                     postRequest = await this.putConfig(fullPath, data);
 
                     return postRequest;
+                case 'interfaces/interface/tunnel/':
+                    cmdbPath = '/api/v2/cmdb/system/gre-tunnel/';
+                    // {
+                    //     "name": "string",
+                    //     "interface": "string",
+                    //     "ip-version": "4",
+                    //     "remote-gw6": "2001:0db8:5b96:0000:0000:426f:8e17:642a",
+                    //     "local-gw6": "2001:0db8:5b96:0000:0000:426f:8e17:642a",
+                    //     "remote-gw": "198.51.100.42",
+                    //     "local-gw": "198.51.100.42",
+                    //     "sequence-number-transmission": "disable",
+                    //     "sequence-number-reception": "disable",
+                    //     "checksum-transmission": "disable",
+                    //     "checksum-reception": "disable",
+                    //     "key-outbound": 0,
+                    //     "key-inbound": 0,
+                    //     "dscp-copying": "disable",
+                    //     "diffservcode": "string",
+                    //     "keepalive-interval": 0,
+                    //     "keepalive-failtimes": 0
+                    //   }
+                    //                   config system gre-tunnel
+                    // edit "toFG2"
+                    //     set interface "port1"
+                    //     set local-gw 198.51.100.1
+                    //     set remote-gw 203.0.113.2
+                    // next
+                    postValue = JSON.parse(postValue); //Convert from buffer.
+
+                    fullPath = cmdbPath;
+                    data = {
+                        name: postValue.tunnel.config.name,
+                        interface: postValue.tunnel.config.interface,
+                        'remote-gw': postValue.tunnel.config.dst,
+                        'local-gw': postValue.tunnel.config.src
+                    };
+
+                    postRequest = await this.postConfig(fullPath, data);
+
+                    return postRequest;
                 default:
                     console.log('Path not implmented yet');
                     return -1;
             }
         } else if (pathArray[0] === 'local-routes') {
             switch (fullPath) {
-                //TODO:
+                //TODO: proper JSON handling.
                 case 'local-routes/static-routes/':
                     cmdbPath = '/api/v2/cmdb/router/static/';
-
                     fullPath = cmdbPath;
+                    postValue = JSON.parse(postValue); //Convert from buffer.
+
                     data = {
-                        status: 'enable'
+                        dst: postValue['static-routes']?.static?.config?.prefix,
+                        gateway: postValue['static-routes']?.static['next-hops']['next-hop']?.config['next-hop'],
+                        device: 'port4', //TODO:will need to provide an agument
+                        distance: postValue['static-routes']?.static['next-hops']['next-hop']?.config?.metric,
+                        vdom: 'root' //Assume root vdom for time being.
                     };
+                    console.log('data: ' + JSON.stringify(data));
+
+                    postRequest = await this.postConfig(fullPath, data);
+
+                    return postRequest;
+                case 'local-routes/local-aggregates/':
+                    cmdbPath = '/api/v2/cmdb/router/static/';
+                    fullPath = cmdbPath;
+                    postValue = JSON.parse(postValue); //Convert from buffer.
+                    //aggregate-address
+                    data = {
+                        dst: postValue['local-aggregates']?.aggregate?.config?.prefix,
+                        blackhole:
+                            postValue['local-aggregates']?.aggregate?.config?.discard === true ? 'enable' : 'disable',
+                        vdom: 'root' //Assume root vdom for time being.
+                    };
+                    console.log('data: ' + JSON.stringify(data));
 
                     postRequest = await this.postConfig(fullPath, data);
 
@@ -324,7 +385,17 @@ export class OpenConfigInterpreter {
                 //TODO: account for multiple names etc:
                 fullPath = fullPath + item.name + '/';
                 pathArray.push(item.name);
-                interfaceNameValue = pathRequest?.subscription[0]?.path?.elem[1].key.name;
+                if (
+                    pathRequest &&
+                    pathRequest.subscription &&
+                    pathRequest.subscription[0].path &&
+                    pathRequest.subscription[0].path.elem &&
+                    pathRequest.subscription[0].path.elem[1] &&
+                    pathRequest.subscription[0].path.elem[1].key
+                ) {
+                    interfaceNameValue = pathRequest?.subscription[0]?.path?.elem[1].key?.name;
+                }
+
                 prefixName = pathRequest?.subscription[0]?.path?.elem[2]?.key?.prefix;
                 //TODO: search for value, verify.
                 subInterfaceIndexValue = pathRequest?.subscription[0]?.path?.elem[3]?.key?.name;
@@ -741,6 +812,7 @@ export class OpenConfigInterpreter {
                     uptimePath = '/api/v2/monitor/web-ui/state';
                     let proxyarp = '/api/v2/cmdb/system/proxy-arp';
                     let vpnTunnel = '/api/v2/monitor/vpn/ipsec';
+                    let tunnelTest = '/api/v2/cmdb/system/gre-tunnel';
                     // let getProxyArp = await this.getRequest(proxyarp, {});
                     let neighborsPath = '/api/v2/monitor/network/lldp/neighbors';
                     //let getNeighbors = await this.getRequest(neighborsPath, {});
@@ -752,6 +824,8 @@ export class OpenConfigInterpreter {
                         count: 10000,
                         id: 0
                     });
+                    let getTunnelTest = await this.getRequest(tunnelTest, {});
+                    console.log('*** Tunnel test gre ' + JSON.stringify(getTunnelTest));
                     let getVPNTunnel = await this.getRequest(vpnTunnel, {});
                     getUptimeRequest = await this.getRequest(uptimePath, '');
                     fullPath = cmdbPath + interfaceNameValue;
@@ -774,20 +848,16 @@ export class OpenConfigInterpreter {
                     model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
                     return model;
                 case 'interfaces/interface/tunnel/':
-                    console.log('path not in cases, attempting to lookup.');
                     cmdbPath = '/api/v2/cmdb/system/interface/';
                     monitorPath = '/api/v2/monitor/system/interface/';
                     uptimePath = '/api/v2/monitor/web-ui/state';
                     let tunnelInfoPath = '/api/v2/monitor/system/available-interfaces';
+                    //TODO: call only if gre?
+                    let greTunnelInfoPath = '/api/v2/cmdb/system/gre-tunnel';
                     let tunnelPath = '/api/v2/monitor/vpn/ipsec';
                     let getTunnel = await this.getRequest(tunnelPath, {});
-                    let getTunnelInfo = await this.getRequest(tunnelInfoPath, {
-                        datasource: true,
-                        start: 0,
-                        count: 10000,
-                        id: 0
-                    });
-
+                    let getTunnelInfo = await this.getRequest(tunnelInfoPath, {});
+                    let getGreTunnelInfo = await this.getRequest(greTunnelInfoPath, {});
                     getUptimeRequest = await this.getRequest(uptimePath, '');
                     fullPath = cmdbPath + interfaceNameValue;
                     data = '';
@@ -803,7 +873,9 @@ export class OpenConfigInterpreter {
                         getUptimeRequest,
                         null,
                         getTunnel,
-                        getTunnelInfo
+                        getTunnelInfo,
+                        getGreTunnelInfo,
+                        interfaceNameValue
                     );
                     console.log('Returned Model' + JSON.stringify(model));
                     return model;
