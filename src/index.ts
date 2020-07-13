@@ -2,6 +2,7 @@
 const Yang = require('yang-js');
 import { GnmiProtoHandlers } from './lib/gnmi-proto-handlers';
 import { CertificateManager } from './lib/cert-manager';
+import { YangModel } from './yang-model-interface';
 import { log } from './util/log';
 import * as path from 'path';
 

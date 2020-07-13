@@ -47,6 +47,7 @@ export class GnmiProtoHandlers {
     public async Capabilities(CapabilityRequest) {
         log.info('Capabilities Not implmented yet.');
     }
+
     public async Get(GetRequest, callback) {
         // TODO: fix implmentation of openconfig interpreter
         const getConfig = new OpenConfigInterpreter(
@@ -101,48 +102,80 @@ export class GnmiProtoHandlers {
             const pollFor = 10000;
             let tempTime = Date.now();
             let firstPoll = true;
-            let diffApiCalls;
+            let md5HashPreviousReturn;
             while (pollCount < pollFor) {
                 const currentTime = Date.now();
                 if (currentTime > tempTime + 500 || firstPoll === true) {
                     firstPoll = false;
                     tempTime = Date.now();
                     pollCount++;
-                    const translatedPath = await getConfig.translatePath(note.subscribe);
+
+                    let translatedPath: object = await getConfig.translatePath(note.subscribe);
+                    log.info(`TypeOF${typeof translatedPath}`);
                     if (note.subscribe.subscription[0].mode === 'ON_CHANGE') {
                         log.info('Subscription Mode set to ON_CHANGE');
-                        if (diffApiCalls.length > 1) {
-                            log.info('TODO');
+                        let md5HashNewReturn = CryptoJS.MD5(JSON.stringify(translatedPath)).toString();
+                        if (md5HashNewReturn !== md5HashPreviousReturn) {
+                            log.info('New Data');
+                            log.info(JSON.stringify(translatedPath));
+                            log.info(md5HashNewReturn);
+                            log.info(md5HashNewReturn.toString());
+                            log.info(CryptoJS.MD5(JSON.stringify(translatedPath)));
+
+                            let SubscribeResponse = {
+                                update: {
+                                    timeStamp: Date.now(),
+                                    prefix: {
+                                        elem: note.subscribe.subscription[0].path.elem
+                                    },
+                                    alias: fullPath,
+
+                                    update: [
+                                        {
+                                            //TODO: Pathkey
+                                            path: { pathKey: note.subscribe.subscription[0].path },
+
+                                            val: {
+                                                json_ietf_val: Buffer.from(JSON.stringify(translatedPath))
+                                            },
+
+                                            duplicates: 0
+                                        }
+                                    ],
+                                    Path: 0,
+                                    atomic: false
+                                }
+                            };
+                            md5HashPreviousReturn = md5HashNewReturn;
+                            call.write(SubscribeResponse);
                         }
                     } else {
                         log.info(`Subscription mode set to ${note.subscribe.subscription[0].mode}`);
+
+                        let SubscribeResponse = {
+                            update: {
+                                timeStamp: Date.now(),
+                                prefix: {
+                                    elem: note.subscribe.subscription[0].path.elem
+                                },
+                                alias: fullPath,
+                                update: [
+                                    {
+                                        //TODO: Pathkey
+                                        path: { pathKey: note.subscribe.subscription[0].path },
+                                        val: {
+                                            json_ietf_val: Buffer.from(JSON.stringify(translatedPath))
+                                        },
+                                        duplicates: 0
+                                    }
+                                ],
+                                Path: 0,
+                                atomic: false
+                            }
+                        };
+
+                        call.write(SubscribeResponse);
                     }
-                    const SubscribeResponse = {
-                        update: {
-                            timeStamp: Date.now(),
-                            prefix: {
-                                elem: note.subscribe.subscription[0].path.elem
-                            },
-                            alias: fullPath,
-
-                            update: [
-                                {
-                                    // TODO: Pathkey
-                                    path: { pathKey: note.subscribe.subscription[0].path },
-
-                                    val: {
-                                        string_val: JSON.stringify(translatedPath)
-                                    },
-
-                                    duplicates: 0
-                                }
-                            ],
-                            Path: 0,
-                            atomic: false
-                        }
-                    };
-
-                    call.write(SubscribeResponse);
                 }
             }
             if (pollCount > pollFor) {

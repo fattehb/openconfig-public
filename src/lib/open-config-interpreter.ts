@@ -34,6 +34,7 @@ class OpenConfigInterpreter {
             postRequest,
             typeValue,
             postValue;
+        const pathArray = [];
         log.info(`pathrequest for set ${JSON.stringify(pathRequest)}`);
         if (pathRequest?.update) {
             interfaceNameValue = pathRequest.update[0].path.elem[1].key.name;
@@ -47,489 +48,777 @@ class OpenConfigInterpreter {
             for (const item of pathRequest.update[0].path.elem) {
                 // TODO: account for multiple names etc:
                 fullPath = `${fullPath + item.name}/`;
+                pathArray.push(item.name);
             }
             log.info(fullPath);
         }
-        switch (fullPath) {
-            case 'interfaces/interface/':
-                // From the yang docs:
-                // "The type of the interface.
+        if (pathArray[0] === 'interfaces') {
+            switch (fullPath) {
+                case 'interfaces/interface/':
+                    // From the yang docs:
+                    // "The type of the interface.
 
-                // When an interface entry is created, a server MAY
-                // initialize the type leaf with a valid value, e.g., if it
-                // is possible to derive the type from the name of the
-                // interface.
+                    // When an interface entry is created, a server MAY
+                    // initialize the type leaf with a valid value, e.g., if it
+                    // is possible to derive the type from the name of the
+                    // interface.
+                    // value that can never be used by the system, e.g., if the
+                    // type is not supported or if the type does not match the
+                    // name of the interface, the server MUST reject the request.
+                    // A NETCONF server MUST reply with an rpc-error with the
+                    // error-tag 'invalid-value' in this case.";
 
-                // If a client tries to set the type of an interface to a
-                // value that can never be used by the system, e.g., if the
-                // type is not supported or if the type does not match the
-                // name of the interface, the server MUST reject the request.
-                // A NETCONF server MUST reply with an rpc-error with the
-                // error-tag 'invalid-value' in this case.";
+                    //This means that we must create an interface type, based on the name:
+                    let interfaceType;
 
-                // This means that we must create an interface type, based on the name:
-                let interfaceType;
+                    const acceptedInterfaceTypes = ['physical', 'loopback', 'aggregate'];
+                    // 'aggregate', 'redundant', 'tunnel', 'loopback'];
 
-                const acceptedInterfaceTypes = ['physical', 'loopback'];
-                // 'aggregate', 'redundant', 'tunnel', 'loopback'];
-
-                for (const i of acceptedInterfaceTypes) {
-                    if (interfaceNameValue.toLowerCase().includes(i)) {
-                        interfaceType = i;
-                        log.info(`Assuming interface type: ${i}`);
+                    for (let i of acceptedInterfaceTypes) {
+                        if (postValue && postValue.toLowerCase().includes(i)) {
+                            interfaceType = i;
+                            console.log(`Assuming interface type: ${i}`);
+                        }
                     }
-                }
-                if (interfaceType === null) {
-                    // TODO: errors needs to be sent to the gNMI client instead.
-                    const err = new Error(`
+                    if (interfaceType === null) {
+                        //TODO: errors needs to be sent to the gNMI client instead.
+                        const err = new Error(`
                     Could not determine interfacetype from name ${interfaceNameValue}. Current accepted types are:
                     physical loopback
                     `);
-                    log.error(err.message);
-                    throw err;
-                }
+                        console.error(err.message);
+                        throw err;
+                    }
 
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-                fullPath = cmdbPath;
-                data = {
-                    name: interfaceNameValue,
-                    vdom: 'root',
-                    type: interfaceType
-                };
-                log.info(`Post Data${JSON.stringify(data)}`);
-                postRequest = await this.postConfig(fullPath, data);
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    fullPath = cmdbPath;
+                    data = {
+                        name: postValue, //since we are creating one here. We can determine form the value provided.
+                        vdom: 'root',
+                        type: interfaceType
+                    };
+                    console.log('Post Data' + JSON.stringify(data));
+                    postRequest = await this.postConfig(fullPath, data);
 
-                return postRequest;
-            case 'interfaces/interface/config/enabled/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
+                    return postRequest;
+                case 'interfaces/interface/config/enabled/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
 
-                fullPath = cmdbPath + interfaceNameValue;
-                data = {
-                    name: interfaceNameValue,
-                    status: postValue === true ? 'up' : 'down'
-                };
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        status: postValue === true ? 'up' : 'down'
+                    };
 
-                postRequest = await this.putConfig(fullPath, data);
-                return postRequest;
-            case 'interfaces/interface/config/mtu/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
+                    postRequest = await this.putConfig(fullPath, data);
+                    return postRequest;
+                case 'interfaces/interface/config/mtu/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
 
-                fullPath = cmdbPath + interfaceNameValue;
-                data = {
-                    name: interfaceNameValue,
-                    mtu: postValue
-                };
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        mtu: postValue
+                    };
 
-                postRequest = await this.putConfig(fullPath, data);
-                return postRequest;
-            case 'interfaces/interface/config/description/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
+                    postRequest = await this.putConfig(fullPath, data);
+                    return postRequest;
+                case 'interfaces/interface/config/description/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
 
-                fullPath = cmdbPath + interfaceNameValue;
-                data = {
-                    name: interfaceNameValue,
-                    description: postValue
-                };
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        description: postValue
+                    };
 
-                postRequest = await this.putConfig(fullPath, data);
+                    postRequest = await this.putConfig(fullPath, data);
 
-                return postRequest;
-            default:
-                log.info('Path not implmented yet');
-                return -1;
+                    return postRequest;
+                case 'interfaces/interface/subinterfaces/subinterface/ipv4/addresses/address/ip/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        ip: postValue,
+                        mode: 'static' //TODO: should we assume this?
+                    };
+
+                    postRequest = await this.putConfig(fullPath, data);
+
+                    return postRequest;
+                case 'interfaces/interface/subinterfaces/subinterface/ipv4/config/dhcp-client/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        mode: postValue === true ? 'dhcp' : 'static'
+                    };
+
+                    postRequest = await this.putConfig(fullPath, data);
+
+                    return postRequest;
+                case 'interfaces/interface/subinterfaces/subinterface/ipv4/config/mtu/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        mtu: postValue
+                    };
+
+                    postRequest = await this.putConfig(fullPath, data);
+
+                    return postRequest;
+                case 'interfaces/interface/subinterfaces/subinterface/ipv4/config/enabled/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        status: postValue === true ? 'up' : 'down'
+                    };
+
+                    postRequest = await this.putConfig(fullPath, data);
+
+                    return postRequest;
+                case 'interfaces/interface/subinterfaces/subinterface/ipv6/addresses/address/ip/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = {
+                        name: interfaceNameValue,
+                        ipv6: {
+                            'ip6-address': postValue,
+                            'ip6-mode': 'static'
+                        }
+                    };
+
+                    postRequest = await this.putConfig(fullPath, data);
+
+                    return postRequest;
+                default:
+                    console.log('Path not implmented yet');
+                    return -1;
+            }
+        } else if (pathArray[0] === 'local-routes') {
+            switch (fullPath) {
+                //TODO:
+                case 'local-routes/static-routes/':
+                    cmdbPath = '/api/v2/cmdb/router/static/';
+
+                    fullPath = cmdbPath;
+                    data = {
+                        status: 'enable'
+                    };
+
+                    postRequest = await this.postConfig(fullPath, data);
+
+                    return postRequest;
+                default:
+                    console.log('Path not implmented yet');
+                    return -1;
+
+                // Return evaluated config.
+            }
         }
     }
 
     public async translatePath(pathRequest) {
-        // TODO: currently assumes just interface.
-        // TODO:Normalize data,
-        // TODO: accept multiple values for interface etc
-        // TODO: accept wildcard
+        //TODO: currently assumes just interface.
+        //TODO:Normalize data,
+        //TODO: accept multiple values for interface etc
+        //TODO: accept wildcard
         // TODO: accept on_change value.
         // TODO: seperate into sepearte classes? for each model.
         // TODO: for models, keep one master, with apicalls etc, call from that section of the model for the respective paths. One place to update in this case
 
-        let cmdbPath;
-        let monitorPath;
-        // let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
-        let interfaceNameValue;
-        let data;
-        let getRequest;
-        let getMontiorRequest;
-        let monitorInterface;
-        let uptimePath;
-        let uptime;
-        let readOnlyData;
-        let getUptimeRequest;
-        let transformConfigtoJSON;
-        let configObj;
+        var cmdbPath;
+        var monitorPath;
+        //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+        var interfaceNameValue;
+        var data;
+        var getRequest;
+        var getMontiorRequest;
+        var monitorInterface;
+        var uptimePath;
+        var uptime;
+        var readOnlyData;
+        var getUptimeRequest;
+        var transformConfigtoJSON;
+        var configObj;
+        var configObjtoJSON;
+        var counterData;
+        var readOnlyData;
+        var combinedObj;
+        var fullPath = '';
+        //TODO: consolidate:
+        var configValues;
+        var configValuestoJSON;
+        var stateData;
+        var outData;
 
-        let fullPath = '';
-        log.info(`Path Request${JSON.stringify(pathRequest)}`);
-        // Subscribe commands shows as:
-        // for (const item of pathRequest.path.elem) {
+        let pathArray = [];
+        var subInterfaceIndexValue;
+
+        var interfaceClassObj = new YangModel();
+        var model;
+
+        var localRoutePath;
+        var prefixName; //local-routing
+        console.log('Path Request' + JSON.stringify(pathRequest));
+        //Subscribe commands shows as:
+        //for (const item of pathRequest.path.elem) {
         if (pathRequest?.subscription) {
-            log.info('Subscription Request sent');
-            // Subscription path contains an array at elem but not at path.
+            console.log('Subscription Request sent');
+            //Subscription path contains an array at elem but not at path.
             for (const item of pathRequest.subscription[0].path.elem) {
-                // TODO: account for multiple names etc:
-                fullPath = `${fullPath + item.name}/`;
-                interfaceNameValue = pathRequest.subscription[0].path.elem[1].key.name;
-                // TODO account for multiple names etc:
-                log.info(`item ${JSON.stringify(item)}`);
+                //TODO: account for multiple names etc:
+                fullPath = fullPath + item.name + '/';
+                pathArray.push(item.name);
+                interfaceNameValue = pathRequest?.subscription[0]?.path?.elem[1].key.name;
+                prefixName = pathRequest?.subscription[0]?.path?.elem[2]?.key?.prefix;
+                //TODO: search for value, verify.
+                subInterfaceIndexValue = pathRequest?.subscription[0]?.path?.elem[3]?.key?.name;
+                //TODO account for multiple names etc:
+                console.log('item ' + JSON.stringify(item));
             }
         } else {
-            // Assume Get request, if not sub.
-            // get request contains an array at path, but not at elem.
+            //Assume Get request, if not sub.
+            //get request contains an array at path, but not at elem.
             for (const item of pathRequest.path[0].elem) {
-                fullPath = `${fullPath + item.name}/`;
-                interfaceNameValue = pathRequest.path[0].elem[1].key.name;
-                // TODO account for multiple names etc.
-                log.info(`item ${JSON.stringify(item)}`);
+                fullPath = fullPath + item.name + '/';
+                pathArray.push(item.name);
+                interfaceNameValue = pathRequest?.path[0]?.elem[1]?.key?.name;
+                prefixName = pathRequest?.path[0]?.elem[2]?.key?.prefix;
+                console.log('PRefix name ' + prefixName);
+                //TODO account for multiple names etc.
+                console.log('item ' + JSON.stringify(item));
             }
         }
+        console.log(pathArray[0]);
+        if (pathArray[0] === 'interfaces') {
+            console.log(`Constructed RestAPI Path: ${fullPath}`);
+            switch (fullPath) {
+                case 'interfaces/interface/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    return model;
 
-        // Assume sub ATM
-        //     //TODO: error check.
-        log.info(`Constructed RestAPI Path: ${fullPath}`);
-        switch (fullPath) {
-            case 'interfaces/interface/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-                monitorPath = '/api/v2/monitor/system/interface/';
-                uptimePath = '/api/v2/monitor/web-ui/state';
+                // Return evaluated config.
+                case 'interfaces/interface/config/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
 
-                fullPath = cmdbPath + interfaceNameValue;
-                data = '';
-                getRequest = await this.getRequest(fullPath, data);
-                getMontiorRequest = await this.getRequest(monitorPath, {
-                    interface_name: interfaceNameValue
-                });
-                getUptimeRequest = await this.getRequest(uptimePath, '');
-                monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                log.info(JSON.stringify(monitorInterface));
-                log.info(`FortiGate Rest Response: ${JSON.stringify(getMontiorRequest)}`);
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
 
-                // Convert Data
-                configObj = this._openconfigInterfacesModel.eval(
-                    {
-                        'openconfig-interfaces:interfaces': {
-                            interface: [
-                                {
-                                    name: getRequest.results[0].name,
-                                    config: {
+                    //Convert Data
+                    configValues = openconfig_interfaces_model.eval(
+                        {
+                            'openconfig-interfaces:interfaces': {
+                                interface: [
+                                    {
                                         name: getRequest.results[0].name,
-                                        type: 'IF_ETHERNET',
-                                        mtu: getRequest.results[0].mtu
+                                        config: {
+                                            name: getRequest.results[0].name,
+                                            type: 'IF_ETHERNET',
+                                            mtu: getRequest.results[0].mtu
+                                        }
                                     }
-                                }
-                            ]
-                        }
-                    },
-                    null
-                );
-                const configObjtoJSON = configObj.toJSON();
-                log.info(
-                    `config object items ${configObjtoJSON['openconfig-interfaces:interfaces'].interface[0].name}`
-                );
-                log.info(`configObject${JSON.stringify(configObj.toJSON())}`);
-                const readOnlyData = {
-                    state: {
-                        name: getRequest.results[0].name,
-                        type: 'IF_ETHERNET',
-                        mtu: getRequest.results[0].mtu,
-                        'loopback-mode': false,
-                        description: getRequest.results[0].description,
-                        enabled: getRequest.results[0].status === 'up',
-                        ifindex: getRequest.results[0].status.vindex,
-                        'admin-status': getRequest.results[0].status === 'up' ? 'UP' : 'DOWN',
-                        'oper-status': getRequest.results[0].status === 'up' ? 'UP' : 'DOWN',
-                        // logical TODO:look into this.
-                        counters: {
-                            'in-octets': monitorInterface.rx_bytes,
-                            'in-pkts': monitorInterface.rx_packets,
-                            // "in-unicast-pkts":
-                            // "in-broadcast-pkts":
-                            // "in-multicast-pkts":
-                            // "in-discards":
-                            'in-errors': monitorInterface.rx_errors,
-                            // "in-unknown-protos":
-                            // "in-fcs-errors":
-                            'out-octets': monitorInterface.tx_bytes,
-                            'out-pkts': monitorInterface.tx_packets,
-                            // "out-unicast-pkts":
-                            // "out-broadcast-pkts":
-                            // "out-multicast-pkts":
-                            // "out-discards":
-                            'out-errors': monitorInterface.tx_errors,
-                            // "carrier-transitions":
-                            'last-clear': getUptimeRequest.results.utc_last_reboot
+                                ]
+                            }
+                        },
+                        null
+                    );
+                    configValuestoJSON = configValues.toJSON();
+                    return configValuestoJSON['openconfig-interfaces:interfaces'].interface[0];
+                case 'interfaces/interface/config/name/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+
+                    //Convert Data
+                    let getNameConfig = openconfig_interfaces_model.eval(
+                        {
+                            'openconfig-interfaces:interfaces': {
+                                interface: [
+                                    {
+                                        name: getRequest.results[0].name,
+                                        config: {
+                                            name: getRequest.results[0].name,
+                                            type: 'IF_ETHERNET',
+                                            mtu: getRequest.results[0].mtu
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        null
+                    );
+                    let getNametoJSON = getNameConfig.toJSON();
+                    return getNametoJSON['openconfig-interfaces:interfaces'].interface[0].name;
+                case 'interfaces/interface/config/description/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    let description = {
+                        description: getRequest.results[0].description
+                    };
+                    return description;
+                case 'interfaces/interface/config/enabled/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    let enabled = {
+                        enabled: getRequest.results[0].status === 'up' ? true : false
+                    };
+                    return enabled;
+
+                case 'interfaces/interface/config/type/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    return model;
+                case 'interfaces/interface/state/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    return model;
+
+                case 'interfaces/interface/state/counters/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, getUptimeRequest);
+                    return model;
+                case 'interfaces/interface/state/counters/in-pkts/':
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, null);
+                    return model;
+                case 'interfaces/interface/state/counters/in-errors/':
+                    monitorPath = '/api/v2/monitor/system/interface/';
+
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, null);
+                    return model;
+                case 'interfaces/interface/state/counters/out-pkts/':
+                    monitorPath = '/api/v2/monitor/system/interface/';
+
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, null);
+                    return model;
+                case 'interfaces/interface/state/counters/out-errors/':
+                    monitorPath = '/api/v2/monitor/system/interface/';
+
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, null);
+                    return model;
+                case 'interfaces/interface/state/counters/out-octets/':
+                    monitorPath = '/api/v2/monitor/system/interface/';
+
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, null);
+                    return model;
+                case 'interfaces/interface/state/counters/in-octets/':
+                    monitorPath = '/api/v2/monitor/system/interface/';
+
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, null);
+                    return model;
+                // Uptime returend via last reboot time.
+                case 'interfaces/interface/state/counters/last-clear':
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    model = interfaceClassObj.interface(pathArray, null, null, getUptimeRequest);
+                    return model;
+
+                case 'interfaces/interface/subinterfaces/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    return model;
+                case 'interfaces/interface/hold-time/':
+                    console.log('Path not implmented yet');
+                    break;
+
+                //Subinterfaces
+                case 'interfaces/interface/subinterfaces/subinterface/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    return model;
+                case 'interfaces/interface/subinterfaces/subinterface/config/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: subInterfaceIndexValue
+                    });
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    console.log('Path Request from config: ' + JSON.stringify(getRequest));
+                    return model;
+                case 'interfaces/interface/subinterfaces/subinterface/config/name/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: subInterfaceIndexValue
+                    });
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    return model;
+                case 'interfaces/interface/subinterfaces/subinterface/config/description/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        getMontiorRequest,
+                        monitorInterface,
+                        getUptimeRequest
+                    );
+                    return model;
+
+                case 'interfaces/interface/subinterfaces/subinterface/config/type/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+
+                    //Convert Data
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        getMontiorRequest,
+                        monitorInterface,
+                        getUptimeRequest
+                    );
+                    return model;
+                case 'interfaces/interface/subinterfaces/subinterface/state/':
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        getMontiorRequest,
+                        monitorInterface,
+                        getUptimeRequest
+                    );
+                    return model;
+
+                case 'interfaces/interface/subinterfaces/subinterface/state/counters/':
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    data = '';
+
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, getUptimeRequest);
+                    return model;
+                case 'interfaces/interface/subinterfaces/subinterface/state/counters/in-pkts/':
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, null);
+                    return model;
+                case 'interfaces/interface/subinterfaces/subinterface/state/counters/in-errors/':
+                    monitorPath = '/api/v2/monitor/system/interface/';
+
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, null);
+                    return model;
+                case 'interfaces/interface/subinterfaces/subinterface/state/counters/out-pkts/':
+                    monitorPath = '/api/v2/monitor/system/interface/';
+
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, null);
+                    return model;
+                case 'interfaces/interface/subinterfaces/subinterface/state/counters/out-errors/':
+                    monitorPath = '/api/v2/monitor/system/interface/';
+
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, null);
+                    return model;
+                case 'interfaces/interface/subinterfaces/subinterface/state/counters/out-octets/':
+                    monitorPath = '/api/v2/monitor/system/interface/';
+
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, null);
+                    return model;
+                case 'interfaces/interface/subinterfaces/subinterface/state/counters/in-octets/':
+                    monitorPath = '/api/v2/monitorwe/system/interface/';
+
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, null);
+                    return model;
+                // Uptime returend via last reboot time.
+                case 'interfaces/interface/subinterfaces/subinterface/state/counters/last-clear':
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+
+                    model = interfaceClassObj.interface(pathArray, null, null, getUptimeRequest);
+                    return model;
+
+                case 'interfaces/interface/subinterfaces/subinterface/subinterfaces/':
+                    console.log('subinterfaces not implmented yet');
+                    break;
+                case 'interfaces/interface/subinterfaces/subinterface/hold-time/':
+                    console.log('Path not implmented yet');
+                    break;
+                //TODO: respond as oc-ip:address
+                case 'interfaces/interface/subinterfaces/subinterface/ipv4/addresses/':
+                    monitorPath = '/api/v2/monitor/system/interface/';
+
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    let proxyarp = '/api/v2/cmdb/system/proxy-arp';
+                    let vpnTunnel = '/api/v2/monitor/vpn/ipsec';
+                    // let getProxyArp = await this.getRequest(proxyarp, {});
+                    let neighborsPath = '/api/v2/monitor/network/lldp/neighbors';
+                    //let getNeighbors = await this.getRequest(neighborsPath, {});
+                    let arpPath = '/api/v2/monitor/system/available-interfaces';
+                    let dot1xPath = '/api/v2/cmdb/switch-controller.security-policy/802-1X';
+                    let getArp = await this.getRequest(arpPath, {
+                        datasource: true,
+                        start: 0,
+                        count: 10000,
+                        id: 0
+                    });
+                    let getVPNTunnel = await this.getRequest(vpnTunnel, {});
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        //interface_name: interfaceNameValue
+                    });
+                    let dot1xPathRequest = await this.getRequest(dot1xPath, data);
+
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    console.log('IPV4 call getArp' + JSON.stringify(getArp));
+                    //console.log('IPV4 call getProxyArp' + JSON.stringify(getProxyArp));
+                    //console.log('IPV4 call getNeighbors' + JSON.stringify(getNeighbors));
+                    console.log('IPV4 call getMontiorRequest' + JSON.stringify(getMontiorRequest));
+                    console.log('IPV4 call getRequest' + JSON.stringify(getRequest));
+                    console.log('IPV4 call dot1xPathRequest' + JSON.stringify(dot1xPathRequest));
+                    console.log('IPV4 call vpn' + JSON.stringify(getVPNTunnel));
+
+                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    return model;
+                case 'interfaces/interface/tunnel/':
+                    console.log('path not in cases, attempting to lookup.');
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    let tunnelInfoPath = '/api/v2/monitor/system/available-interfaces';
+                    let tunnelPath = '/api/v2/monitor/vpn/ipsec';
+                    let getTunnel = await this.getRequest(tunnelPath, {});
+                    let getTunnelInfo = await this.getRequest(tunnelInfoPath, {
+                        datasource: true,
+                        start: 0,
+                        count: 10000,
+                        id: 0
+                    });
+
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        getRequest,
+                        monitorInterface,
+                        getUptimeRequest,
+                        null,
+                        getTunnel,
+                        getTunnelInfo
+                    );
+                    console.log('Returned Model' + JSON.stringify(model));
+                    return model;
+                default:
+                    console.log('path not in cases, attempting to lookup.');
+                    cmdbPath = '/api/v2/cmdb/system/interface/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(fullPath, data);
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    console.log('Returned Model' + JSON.stringify(model));
+                    return model;
+                //return { val: 'Path Not implmented yet.' };
+            }
+        } else if (pathArray[0] === 'local-routes') {
+            console.log('LocalRoutes');
+            switch (fullPath) {
+                case 'local-routes':
+                    localRoutePath = '/api/v2/cmdb/router/static/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+                    getRequest = await this.getRequest(localRoutePath, data);
+                    getMontiorRequest = await this.getRequest(monitorPath, {
+                        interface_name: interfaceNameValue
+                    });
+                    monitorInterface = getMontiorRequest.results[interfaceNameValue];
+                    model = interfaceClassObj.localRoutes(pathArray, getRequest);
+                    return model;
+                default:
+                    localRoutePath = '/api/v2/cmdb/router/static/';
+                    monitorPath = '/api/v2/monitor/system/interface/';
+                    uptimePath = '/api/v2/monitor/web-ui/state';
+                    getUptimeRequest = await this.getRequest(uptimePath, '');
+                    fullPath = cmdbPath + interfaceNameValue;
+                    data = '';
+
+                    getRequest = await this.getRequest(localRoutePath, data);
+                    for (let i of getRequest?.results) {
+                        if (i.dst === prefixName) {
+                            model = interfaceClassObj.localRoutes(pathArray, getRequest);
+                            return model;
                         }
                     }
-                };
-                // configObjtoJSON['openconfig-interfaces:interfaces'].interface[0].state
-                log.info(`CONFIGOBJECT COMBINED ${JSON.stringify(configObjtoJSON)}`);
-                const combinedObj = configObjtoJSON['openconfig-interfaces:interfaces'];
-                combinedObj.interface[0].sate = readOnlyData.state;
+                    console.log('Local Routes' + JSON.stringify(getRequest));
+                    model = interfaceClassObj.localRoutes(pathArray, getRequest);
+                    return model;
 
-                log.info(`Combined Data${JSON.stringify(combinedObj)}`);
-                return combinedObj;
-
-            // Return evaluated config.
-            case 'interfaces/interface/config/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-
-                fullPath = cmdbPath + interfaceNameValue;
-                data = '';
-                getRequest = await this.getRequest(fullPath, data);
-
-                // Convert Data
-                const configValues = this._openconfigInterfacesModel.eval(
-                    {
-                        'openconfig-interfaces:interfaces': {
-                            interface: [
-                                {
-                                    name: getRequest.results[0].name,
-                                    config: {
-                                        name: getRequest.results[0].name,
-                                        type: 'IF_ETHERNET',
-                                        mtu: getRequest.results[0].mtu
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    null
-                );
-                const configValuestoJSON = configValues.toJSON();
-                return configValuestoJSON['openconfig-interfaces:interfaces'].interface[0];
-            case 'interfaces/interface/config/name/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-
-                fullPath = cmdbPath + interfaceNameValue;
-                data = '';
-                getRequest = await this.getRequest(fullPath, data);
-
-                // Convert Data
-                const getNameConfig = this._openconfigInterfacesModel.eval(
-                    {
-                        'openconfig-interfaces:interfaces': {
-                            interface: [
-                                {
-                                    name: getRequest.results[0].name,
-                                    config: {
-                                        name: getRequest.results[0].name,
-                                        type: 'IF_ETHERNET',
-                                        mtu: getRequest.results[0].mtu
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    null
-                );
-                const getNametoJSON = getNameConfig.toJSON();
-                return getNametoJSON['openconfig-interfaces:interfaces'].interface[0].name;
-
-            case 'interfaces/interface/config/type/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-
-                fullPath = cmdbPath + interfaceNameValue;
-                data = '';
-                getRequest = await this.getRequest(fullPath, data);
-
-                // Convert Data
-                configObj = this._openconfigInterfacesModel.eval(
-                    {
-                        'openconfig-interfaces:interfaces': {
-                            interface: [
-                                {
-                                    name: getRequest.results[0].name,
-                                    config: {
-                                        name: getRequest.results[0].name,
-                                        type: 'IF_ETHERNET',
-                                        mtu: getRequest.results[0].mtu
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    null
-                );
-                transformConfigtoJSON = configObj.toJSON();
-                return transformConfigtoJSON['openconfig-interfaces:interfaces'].interface[0].config
-                    .type;
-
-            case 'interfaces/interface/state/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-                monitorPath = '/api/v2/monitor/system/interface/';
-                uptimePath = '/api/v2/monitor/web-ui/state';
-                getUptimeRequest = await this.getRequest(uptimePath, '');
-                fullPath = cmdbPath + interfaceNameValue;
-                data = '';
-                getRequest = await this.getRequest(fullPath, data);
-                getMontiorRequest = await this.getRequest(monitorPath, {
-                    interface_name: interfaceNameValue
-                });
-                monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                const stateData = {
-                    state: {
-                        name: getRequest.results[0].name,
-                        type: 'IF_ETHERNET',
-                        mtu: getRequest.results[0].mtu,
-                        'loopback-mode': false,
-                        description: getRequest.results[0].description,
-                        enabled: getRequest.results[0].status === 'up',
-                        ifindex: getRequest.results[0].status.vindex,
-                        'admin-status': getRequest.results[0].status === 'up' ? 'UP' : 'DOWN',
-                        'oper-status': getRequest.results[0].status === 'up' ? 'UP' : 'DOWN',
-                        // logical TODO:look into this.
-                        counters: {
-                            'in-octets': monitorInterface.rx_bytes,
-                            'in-pkts': monitorInterface.rx_packets,
-                            // "in-unicast-pkts":
-                            // "in-broadcast-pkts":
-                            // "in-multicast-pkts":
-                            // "in-discards":
-                            'in-errors': monitorInterface.rx_errors,
-                            // "in-unknown-protos":
-                            // "in-fcs-errors":
-                            'out-octets': monitorInterface.tx_bytes,
-                            'out-pkts': monitorInterface.tx_packets,
-                            // "out-unicast-pkts":
-                            // "out-broadcast-pkts":
-                            // "out-multicast-pkts":
-                            // "out-discards":
-                            'out-errors': monitorInterface.tx_errors,
-                            // "carrier-transitions":
-                            'last-clear': getUptimeRequest.results.utc_last_reboot
-                        }
-                    }
-                };
-
-                return stateData;
-
-            case 'interfaces/interface/state/counters/':
-                cmdbPath = '/api/v2/cmdb/system/interface/';
-                monitorPath = '/api/v2/monitor/system/interface/';
-                uptimePath = '/api/v2/monitor/web-ui/state';
-                getUptimeRequest = await this.getRequest(uptimePath, '');
-
-                fullPath = cmdbPath + interfaceNameValue;
-                data = '';
-
-                getRequest = await this.getRequest(fullPath, data);
-                getMontiorRequest = await this.getRequest(monitorPath, {
-                    interface_name: interfaceNameValue
-                });
-                monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                const counterData = {
-                    counters: {
-                        'in-octets': monitorInterface.rx_bytes,
-                        'in-pkts': monitorInterface.rx_packets,
-                        // "in-unicast-pkts":
-                        // "in-broadcast-pkts":
-                        // "in-multicast-pkts":
-                        // "in-discards":
-                        'in-errors': monitorInterface.rx_errors,
-                        // "in-unknown-protos":
-                        // "in-fcs-errors":
-                        'out-octets': monitorInterface.tx_bytes,
-                        'out-pkts': monitorInterface.tx_packets,
-                        // "out-unicast-pkts":
-                        // "out-broadcast-pkts":
-                        // "out-multicast-pkts":
-                        // "out-discards":
-                        'out-errors': monitorInterface.tx_errors,
-                        // "carrier-transitions":
-                        'last-clear': getUptimeRequest.results.utc_last_reboot
-                    }
-                };
-                return counterData;
-            case 'interfaces/interface/state/counters/in-pkts/':
-                monitorPath = '/api/v2/monitor/system/interface/';
-                getMontiorRequest = await this.getRequest(monitorPath, {
-                    interface_name: interfaceNameValue
-                });
-                monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                const inPackets = {
-                    'in-pkts': monitorInterface.rx_packets
-                };
-                return inPackets;
-            case 'interfaces/interface/state/counters/in-errors/':
-                monitorPath = '/api/v2/monitor/system/interface/';
-
-                getMontiorRequest = await this.getRequest(monitorPath, {
-                    interface_name: interfaceNameValue
-                });
-                monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                const inErrors = {
-                    'in-errors': monitorInterface.rx_errors
-                };
-                return inErrors;
-            case 'interfaces/interface/state/counters/out-pkts/':
-                monitorPath = '/api/v2/monitor/system/interface/';
-
-                getMontiorRequest = await this.getRequest(monitorPath, {
-                    interface_name: interfaceNameValue
-                });
-                monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                const outPkts = {
-                    'out-pkts': monitorInterface.tx_packets
-                };
-                return outPkts;
-            case 'interfaces/interface/state/counters/out-errors/':
-                monitorPath = '/api/v2/monitor/system/interface/';
-
-                getMontiorRequest = await this.getRequest(monitorPath, {
-                    interface_name: interfaceNameValue
-                });
-                monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                const outErrors = {
-                    'out-errors': monitorInterface.tx_errors
-                };
-                return outErrors;
-            case 'interfaces/interface/state/counters/out-octets/':
-                monitorPath = '/api/v2/monitor/system/interface/';
-
-                getMontiorRequest = await this.getRequest(monitorPath, {
-                    interface_name: interfaceNameValue
-                });
-                monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                const outOctets = {
-                    'out-octets': monitorInterface.tx_bytes
-                };
-                return outOctets;
-            case 'interfaces/interface/state/counters/in-octets/':
-                monitorPath = '/api/v2/monitor/system/interface/';
-
-                getMontiorRequest = await this.getRequest(monitorPath, {
-                    interface_name: interfaceNameValue
-                });
-                monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                const inOctets = monitorInterface.rx_bytes;
-                // TODO:
-                return inOctets;
-            // Uptime returend via last reboot time.
-            case 'interfaces/interface/state/counters/last-clear':
-                uptimePath = '/api/v2/monitor/web-ui/state';
-                getUptimeRequest = await this.getRequest(uptimePath, '');
-
-                const lastClear = {
-                    'last-clear': getUptimeRequest.results.utc_last_reboot
-                };
-                return lastClear;
-
-            case 'interfaces/interface/subinterfaces/':
-                log.info('subinterfaces not implmented yet');
-                break;
-            case 'interfaces/interface/hold-time/':
-                log.info('Path not implmented yet');
-                break;
-            default:
-                log.info('Path not implmented yet');
-                return { val: 'Path Not implmented yet.' };
+                // Return evaluated config.
+            }
         }
-
         return fullPath;
     }
 
