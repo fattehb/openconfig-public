@@ -25,7 +25,10 @@ export class GnmiProtoHandlers {
         // TODO: error handling return.
         // Named to correspond to GNMI specs.
         const setConfig = new OpenConfigInterpreter(
-            OpenConfigInterpreter.DEFAULT_POLL_INTERVAL, FORTIGATE_IP, FORTIGATE_API_KEY);
+            OpenConfigInterpreter.DEFAULT_POLL_INTERVAL,
+            FORTIGATE_IP,
+            FORTIGATE_API_KEY
+        );
         const setModel = setConfig.setModelRequests(setRequest.request);
         log.info(`SetModel Return${JSON.stringify(setModel)}`);
         const SetResponse = {
@@ -51,7 +54,10 @@ export class GnmiProtoHandlers {
     public async Get(GetRequest, callback) {
         // TODO: fix implmentation of openconfig interpreter
         const getConfig = new OpenConfigInterpreter(
-            OpenConfigInterpreter.DEFAULT_POLL_INTERVAL, FORTIGATE_IP, FORTIGATE_API_KEY);
+            OpenConfigInterpreter.DEFAULT_POLL_INTERVAL,
+            FORTIGATE_IP,
+            FORTIGATE_API_KEY
+        );
 
         log.info(`GetRequest ${JSON.stringify(GetRequest)}`);
         log.info('Joining Path');
@@ -87,7 +93,10 @@ export class GnmiProtoHandlers {
 
     public Subscribe(call, callback) {
         const getConfig = new OpenConfigInterpreter(
-            OpenConfigInterpreter.DEFAULT_POLL_INTERVAL, FORTIGATE_IP, FORTIGATE_API_KEY);
+            OpenConfigInterpreter.DEFAULT_POLL_INTERVAL,
+            FORTIGATE_IP,
+            FORTIGATE_API_KEY
+        );
         call.on('data', async function (note) {
             let fullPath = '';
             log.info(JSON.stringify(note));
@@ -110,11 +119,13 @@ export class GnmiProtoHandlers {
                     tempTime = Date.now();
                     pollCount++;
 
-                    let translatedPath: object = await getConfig.translatePath(note.subscribe);
+                    const translatedPath: object = await getConfig.translatePath(note.subscribe);
                     log.info(`TypeOF${typeof translatedPath}`);
                     if (note.subscribe.subscription[0].mode === 'ON_CHANGE') {
                         log.info('Subscription Mode set to ON_CHANGE');
-                        let md5HashNewReturn = CryptoJS.MD5(JSON.stringify(translatedPath)).toString();
+                        const md5HashNewReturn = CryptoJS.MD5(
+                            JSON.stringify(translatedPath)
+                        ).toString();
                         if (md5HashNewReturn !== md5HashPreviousReturn) {
                             log.info('New Data');
                             log.info(JSON.stringify(translatedPath));
@@ -122,7 +133,7 @@ export class GnmiProtoHandlers {
                             log.info(md5HashNewReturn.toString());
                             log.info(CryptoJS.MD5(JSON.stringify(translatedPath)));
 
-                            let SubscribeResponse = {
+                            const SubscribeResponse = {
                                 update: {
                                     timeStamp: Date.now(),
                                     prefix: {
@@ -132,11 +143,13 @@ export class GnmiProtoHandlers {
 
                                     update: [
                                         {
-                                            //TODO: Pathkey
+                                            // TODO: Pathkey
                                             path: { pathKey: note.subscribe.subscription[0].path },
 
                                             val: {
-                                                json_ietf_val: Buffer.from(JSON.stringify(translatedPath))
+                                                json_ietf_val: Buffer.from(
+                                                    JSON.stringify(translatedPath)
+                                                )
                                             },
 
                                             duplicates: 0
@@ -152,7 +165,7 @@ export class GnmiProtoHandlers {
                     } else {
                         log.info(`Subscription mode set to ${note.subscribe.subscription[0].mode}`);
 
-                        let SubscribeResponse = {
+                        const SubscribeResponse = {
                             update: {
                                 timeStamp: Date.now(),
                                 prefix: {
@@ -161,10 +174,12 @@ export class GnmiProtoHandlers {
                                 alias: fullPath,
                                 update: [
                                     {
-                                        //TODO: Pathkey
+                                        // TODO: Pathkey
                                         path: { pathKey: note.subscribe.subscription[0].path },
                                         val: {
-                                            json_ietf_val: Buffer.from(JSON.stringify(translatedPath))
+                                            json_ietf_val: Buffer.from(
+                                                JSON.stringify(translatedPath)
+                                            )
                                         },
                                         duplicates: 0
                                     }

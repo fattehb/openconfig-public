@@ -21,9 +21,7 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 });
 const loadgNMIProto = grpc.loadPackageDefinition(packageDefinition).gnmi;
 // TODO: move imports to package.json file.
-const importTest = Yang.import(
-    `${__dirname}/openconfig/third_party/ietf/ietf-interfaces.yang`
-);
+const importTest = Yang.import(`${__dirname}/openconfig/third_party/ietf/ietf-interfaces.yang`);
 const openconfig_yang_types_model = Yang.import(
     `${__dirname}/openconfig/release/models/types/openconfig-yang-types.yang`
 );

@@ -5,10 +5,10 @@ import * as path from 'path';
 const Yang = require('yang-js');
 
 class OpenConfigInterpreter {
-    static DEFAULT_POLL_INTERVAL: number = 5000;
+    static DEFAULT_POLL_INTERVAL = 5000;
 
     private _openconfigInterfacesModel: {
-        eval: Function // function
+        eval: Function; // function
     };
 
     constructor(
@@ -16,8 +16,11 @@ class OpenConfigInterpreter {
         private readonly _fortigateIp: string,
         private readonly _fortigateApiKey: string
     ) {
-        this._openconfigInterfacesModel = Yang.import(path.resolve(
-            __dirname, '../openconfig/release/models/interfaces/openconfig-interfaces.yang')
+        this._openconfigInterfacesModel = Yang.import(
+            path.resolve(
+                __dirname,
+                '../openconfig/release/models/interfaces/openconfig-interfaces.yang'
+            )
         );
     }
 
@@ -68,20 +71,20 @@ class OpenConfigInterpreter {
                     // A NETCONF server MUST reply with an rpc-error with the
                     // error-tag 'invalid-value' in this case.";
 
-                    //This means that we must create an interface type, based on the name:
+                    // This means that we must create an interface type, based on the name:
                     let interfaceType;
 
                     const acceptedInterfaceTypes = ['physical', 'loopback', 'aggregate'];
                     // 'aggregate', 'redundant', 'tunnel', 'loopback'];
 
-                    for (let i of acceptedInterfaceTypes) {
+                    for (const i of acceptedInterfaceTypes) {
                         if (postValue && postValue.toLowerCase().includes(i)) {
                             interfaceType = i;
                             console.log(`Assuming interface type: ${i}`);
                         }
                     }
                     if (interfaceType === null) {
-                        //TODO: errors needs to be sent to the gNMI client instead.
+                        // TODO: errors needs to be sent to the gNMI client instead.
                         const err = new Error(`
                     Could not determine interfacetype from name ${interfaceNameValue}. Current accepted types are:
                     physical loopback
@@ -93,11 +96,11 @@ class OpenConfigInterpreter {
                     cmdbPath = '/api/v2/cmdb/system/interface/';
                     fullPath = cmdbPath;
                     data = {
-                        name: postValue, //since we are creating one here. We can determine form the value provided.
+                        name: postValue, // since we are creating one here. We can determine form the value provided.
                         vdom: 'root',
                         type: interfaceType
                     };
-                    console.log('Post Data' + JSON.stringify(data));
+                    console.log(`Post Data${JSON.stringify(data)}`);
                     postRequest = await this.postConfig(fullPath, data);
 
                     return postRequest;
@@ -142,7 +145,7 @@ class OpenConfigInterpreter {
                     data = {
                         name: interfaceNameValue,
                         ip: postValue,
-                        mode: 'static' //TODO: should we assume this?
+                        mode: 'static' // TODO: should we assume this?
                     };
 
                     postRequest = await this.putConfig(fullPath, data);
@@ -205,7 +208,7 @@ class OpenConfigInterpreter {
             }
         } else if (pathArray[0] === 'local-routes') {
             switch (fullPath) {
-                //TODO:
+                // TODO:
                 case 'local-routes/static-routes/':
                     cmdbPath = '/api/v2/cmdb/router/static/';
 
@@ -227,75 +230,75 @@ class OpenConfigInterpreter {
     }
 
     public async translatePath(pathRequest) {
-        //TODO: currently assumes just interface.
-        //TODO:Normalize data,
-        //TODO: accept multiple values for interface etc
-        //TODO: accept wildcard
+        // TODO: currently assumes just interface.
+        // TODO:Normalize data,
+        // TODO: accept multiple values for interface etc
+        // TODO: accept wildcard
         // TODO: accept on_change value.
         // TODO: seperate into sepearte classes? for each model.
         // TODO: for models, keep one master, with apicalls etc, call from that section of the model for the respective paths. One place to update in this case
 
-        var cmdbPath;
-        var monitorPath;
-        //let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
-        var interfaceNameValue;
-        var data;
-        var getRequest;
-        var getMontiorRequest;
-        var monitorInterface;
-        var uptimePath;
-        var uptime;
+        let cmdbPath;
+        let monitorPath;
+        // let interfaceNameValue = pathRequest.path.elem[1].key.name; <---subscribe
+        let interfaceNameValue;
+        let data;
+        let getRequest;
+        let getMontiorRequest;
+        let monitorInterface;
+        let uptimePath;
+        let uptime;
         var readOnlyData;
-        var getUptimeRequest;
-        var transformConfigtoJSON;
-        var configObj;
-        var configObjtoJSON;
-        var counterData;
+        let getUptimeRequest;
+        let transformConfigtoJSON;
+        let configObj;
+        let configObjtoJSON;
+        let counterData;
         var readOnlyData;
-        var combinedObj;
-        var fullPath = '';
-        //TODO: consolidate:
-        var configValues;
-        var configValuestoJSON;
-        var stateData;
-        var outData;
+        let combinedObj;
+        let fullPath = '';
+        // TODO: consolidate:
+        let configValues;
+        let configValuestoJSON;
+        let stateData;
+        let outData;
 
-        let pathArray = [];
-        var subInterfaceIndexValue;
+        const pathArray = [];
+        let subInterfaceIndexValue;
 
-        var interfaceClassObj = new YangModel();
-        var model;
+        const interfaceClassObj = new YangModel();
+        let model;
 
-        var localRoutePath;
-        var prefixName; //local-routing
-        console.log('Path Request' + JSON.stringify(pathRequest));
-        //Subscribe commands shows as:
-        //for (const item of pathRequest.path.elem) {
+        let localRoutePath;
+        let prefixName; // local-routing
+        console.log(`Path Request${JSON.stringify(pathRequest)}`);
+        // Subscribe commands shows as:
+        // for (const item of pathRequest.path.elem) {
         if (pathRequest?.subscription) {
             console.log('Subscription Request sent');
-            //Subscription path contains an array at elem but not at path.
+            // Subscription path contains an array at elem but not at path.
             for (const item of pathRequest.subscription[0].path.elem) {
-                //TODO: account for multiple names etc:
-                fullPath = fullPath + item.name + '/';
+                // TODO: account for multiple names etc:
+                fullPath = `${fullPath + item.name}/`;
                 pathArray.push(item.name);
                 interfaceNameValue = pathRequest?.subscription[0]?.path?.elem[1].key.name;
                 prefixName = pathRequest?.subscription[0]?.path?.elem[2]?.key?.prefix;
-                //TODO: search for value, verify.
+                // TODO: search for value, verify.
                 subInterfaceIndexValue = pathRequest?.subscription[0]?.path?.elem[3]?.key?.name;
-                //TODO account for multiple names etc:
-                console.log('item ' + JSON.stringify(item));
+                // TODO account for multiple names etc:
+                console.log(`item ${JSON.stringify(item)}`);
             }
         } else {
-            //Assume Get request, if not sub.
-            //get request contains an array at path, but not at elem.
+            // Assume Get request, if not sub.
+            // get request contains an array at path, but not at elem.
             for (const item of pathRequest.path[0].elem) {
-                fullPath = fullPath + item.name + '/';
+                fullPath = `${fullPath + item.name}/`;
                 pathArray.push(item.name);
                 interfaceNameValue = pathRequest?.path[0]?.elem[1]?.key?.name;
                 prefixName = pathRequest?.path[0]?.elem[2]?.key?.prefix;
-                console.log('PRefix name ' + prefixName);
-                //TODO account for multiple names etc.
-                console.log('item ' + JSON.stringify(item));
+                console.log(`PRefix name ${prefixName}`);
+                // TODO account for multiple names etc.
+                console.log(`item ${JSON.stringify(item)}`);
             }
         }
         console.log(pathArray[0]);
@@ -314,7 +317,12 @@ class OpenConfigInterpreter {
                         interface_name: interfaceNameValue
                     });
                     monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        getRequest,
+                        monitorInterface,
+                        getUptimeRequest
+                    );
                     return model;
 
                 // Return evaluated config.
@@ -325,7 +333,7 @@ class OpenConfigInterpreter {
                     data = '';
                     getRequest = await this.getRequest(fullPath, data);
 
-                    //Convert Data
+                    // Convert Data
                     configValues = openconfig_interfaces_model.eval(
                         {
                             'openconfig-interfaces:interfaces': {
@@ -352,8 +360,8 @@ class OpenConfigInterpreter {
                     data = '';
                     getRequest = await this.getRequest(fullPath, data);
 
-                    //Convert Data
-                    let getNameConfig = openconfig_interfaces_model.eval(
+                    // Convert Data
+                    const getNameConfig = openconfig_interfaces_model.eval(
                         {
                             'openconfig-interfaces:interfaces': {
                                 interface: [
@@ -370,14 +378,14 @@ class OpenConfigInterpreter {
                         },
                         null
                     );
-                    let getNametoJSON = getNameConfig.toJSON();
+                    const getNametoJSON = getNameConfig.toJSON();
                     return getNametoJSON['openconfig-interfaces:interfaces'].interface[0].name;
                 case 'interfaces/interface/config/description/':
                     cmdbPath = '/api/v2/cmdb/system/interface/';
                     fullPath = cmdbPath + interfaceNameValue;
                     data = '';
                     getRequest = await this.getRequest(fullPath, data);
-                    let description = {
+                    const description = {
                         description: getRequest.results[0].description
                     };
                     return description;
@@ -386,8 +394,8 @@ class OpenConfigInterpreter {
                     fullPath = cmdbPath + interfaceNameValue;
                     data = '';
                     getRequest = await this.getRequest(fullPath, data);
-                    let enabled = {
-                        enabled: getRequest.results[0].status === 'up' ? true : false
+                    const enabled = {
+                        enabled: getRequest.results[0].status === 'up'
                     };
                     return enabled;
 
@@ -403,7 +411,12 @@ class OpenConfigInterpreter {
                         interface_name: interfaceNameValue
                     });
                     monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        getRequest,
+                        monitorInterface,
+                        getUptimeRequest
+                    );
                     return model;
                 case 'interfaces/interface/state/':
                     cmdbPath = '/api/v2/cmdb/system/interface/';
@@ -417,7 +430,12 @@ class OpenConfigInterpreter {
                         interface_name: interfaceNameValue
                     });
                     monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        getRequest,
+                        monitorInterface,
+                        getUptimeRequest
+                    );
                     return model;
 
                 case 'interfaces/interface/state/counters/':
@@ -433,7 +451,12 @@ class OpenConfigInterpreter {
                         interface_name: interfaceNameValue
                     });
                     monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, getUptimeRequest);
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        null,
+                        monitorInterface,
+                        getUptimeRequest
+                    );
                     return model;
                 case 'interfaces/interface/state/counters/in-pkts/':
                     monitorPath = '/api/v2/monitor/system/interface/';
@@ -507,13 +530,18 @@ class OpenConfigInterpreter {
                         interface_name: interfaceNameValue
                     });
                     monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        getRequest,
+                        monitorInterface,
+                        getUptimeRequest
+                    );
                     return model;
                 case 'interfaces/interface/hold-time/':
                     console.log('Path not implmented yet');
                     break;
 
-                //Subinterfaces
+                // Subinterfaces
                 case 'interfaces/interface/subinterfaces/subinterface/':
                     cmdbPath = '/api/v2/cmdb/system/interface/';
                     monitorPath = '/api/v2/monitor/system/interface/';
@@ -526,7 +554,12 @@ class OpenConfigInterpreter {
                         interface_name: interfaceNameValue
                     });
                     monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        getRequest,
+                        monitorInterface,
+                        getUptimeRequest
+                    );
                     return model;
                 case 'interfaces/interface/subinterfaces/subinterface/config/':
                     cmdbPath = '/api/v2/cmdb/system/interface/';
@@ -541,8 +574,13 @@ class OpenConfigInterpreter {
                     });
                     getUptimeRequest = await this.getRequest(uptimePath, '');
                     monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
-                    console.log('Path Request from config: ' + JSON.stringify(getRequest));
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        getRequest,
+                        monitorInterface,
+                        getUptimeRequest
+                    );
+                    console.log(`Path Request from config: ${JSON.stringify(getRequest)}`);
                     return model;
                 case 'interfaces/interface/subinterfaces/subinterface/config/name/':
                     cmdbPath = '/api/v2/cmdb/system/interface/';
@@ -557,7 +595,12 @@ class OpenConfigInterpreter {
                     });
                     getUptimeRequest = await this.getRequest(uptimePath, '');
                     monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        getRequest,
+                        monitorInterface,
+                        getUptimeRequest
+                    );
                     return model;
                 case 'interfaces/interface/subinterfaces/subinterface/config/description/':
                     cmdbPath = '/api/v2/cmdb/system/interface/';
@@ -579,7 +622,7 @@ class OpenConfigInterpreter {
                     data = '';
                     getRequest = await this.getRequest(fullPath, data);
 
-                    //Convert Data
+                    // Convert Data
                     model = interfaceClassObj.interface(
                         pathArray,
                         getMontiorRequest,
@@ -617,7 +660,12 @@ class OpenConfigInterpreter {
                         interface_name: interfaceNameValue
                     });
                     monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                    model = interfaceClassObj.interface(pathArray, null, monitorInterface, getUptimeRequest);
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        null,
+                        monitorInterface,
+                        getUptimeRequest
+                    );
                     return model;
                 case 'interfaces/interface/subinterfaces/subinterface/state/counters/in-pkts/':
                     monitorPath = '/api/v2/monitor/system/interface/';
@@ -686,56 +734,61 @@ class OpenConfigInterpreter {
                 case 'interfaces/interface/subinterfaces/subinterface/hold-time/':
                     console.log('Path not implmented yet');
                     break;
-                //TODO: respond as oc-ip:address
+                // TODO: respond as oc-ip:address
                 case 'interfaces/interface/subinterfaces/subinterface/ipv4/addresses/':
                     monitorPath = '/api/v2/monitor/system/interface/';
 
                     cmdbPath = '/api/v2/cmdb/system/interface/';
                     monitorPath = '/api/v2/monitor/system/interface/';
                     uptimePath = '/api/v2/monitor/web-ui/state';
-                    let proxyarp = '/api/v2/cmdb/system/proxy-arp';
-                    let vpnTunnel = '/api/v2/monitor/vpn/ipsec';
+                    const proxyarp = '/api/v2/cmdb/system/proxy-arp';
+                    const vpnTunnel = '/api/v2/monitor/vpn/ipsec';
                     // let getProxyArp = await this.getRequest(proxyarp, {});
-                    let neighborsPath = '/api/v2/monitor/network/lldp/neighbors';
-                    //let getNeighbors = await this.getRequest(neighborsPath, {});
-                    let arpPath = '/api/v2/monitor/system/available-interfaces';
-                    let dot1xPath = '/api/v2/cmdb/switch-controller.security-policy/802-1X';
-                    let getArp = await this.getRequest(arpPath, {
+                    const neighborsPath = '/api/v2/monitor/network/lldp/neighbors';
+                    // let getNeighbors = await this.getRequest(neighborsPath, {});
+                    const arpPath = '/api/v2/monitor/system/available-interfaces';
+                    const dot1xPath = '/api/v2/cmdb/switch-controller.security-policy/802-1X';
+                    const getArp = await this.getRequest(arpPath, {
                         datasource: true,
                         start: 0,
                         count: 10000,
                         id: 0
                     });
-                    let getVPNTunnel = await this.getRequest(vpnTunnel, {});
+                    const getVPNTunnel = await this.getRequest(vpnTunnel, {});
                     getUptimeRequest = await this.getRequest(uptimePath, '');
                     fullPath = cmdbPath + interfaceNameValue;
                     data = '';
                     getRequest = await this.getRequest(fullPath, data);
                     getMontiorRequest = await this.getRequest(monitorPath, {
-                        //interface_name: interfaceNameValue
+                        // interface_name: interfaceNameValue
                     });
-                    let dot1xPathRequest = await this.getRequest(dot1xPath, data);
+                    const dot1xPathRequest = await this.getRequest(dot1xPath, data);
 
                     monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                    console.log('IPV4 call getArp' + JSON.stringify(getArp));
-                    //console.log('IPV4 call getProxyArp' + JSON.stringify(getProxyArp));
-                    //console.log('IPV4 call getNeighbors' + JSON.stringify(getNeighbors));
-                    console.log('IPV4 call getMontiorRequest' + JSON.stringify(getMontiorRequest));
-                    console.log('IPV4 call getRequest' + JSON.stringify(getRequest));
-                    console.log('IPV4 call dot1xPathRequest' + JSON.stringify(dot1xPathRequest));
-                    console.log('IPV4 call vpn' + JSON.stringify(getVPNTunnel));
+                    console.log(`IPV4 call getArp${JSON.stringify(getArp)}`);
+                    // console.log('IPV4 call getProxyArp' + JSON.stringify(getProxyArp));
+                    // console.log('IPV4 call getNeighbors' + JSON.stringify(getNeighbors));
+                    console.log(`IPV4 call getMontiorRequest${JSON.stringify(getMontiorRequest)}`);
+                    console.log(`IPV4 call getRequest${JSON.stringify(getRequest)}`);
+                    console.log(`IPV4 call dot1xPathRequest${JSON.stringify(dot1xPathRequest)}`);
+                    console.log(`IPV4 call vpn${JSON.stringify(getVPNTunnel)}`);
 
-                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        getRequest,
+                        monitorInterface,
+                        getUptimeRequest
+                    );
                     return model;
                 case 'interfaces/interface/tunnel/':
                     console.log('path not in cases, attempting to lookup.');
                     cmdbPath = '/api/v2/cmdb/system/interface/';
                     monitorPath = '/api/v2/monitor/system/interface/';
                     uptimePath = '/api/v2/monitor/web-ui/state';
-                    let tunnelInfoPath = '/api/v2/monitor/system/available-interfaces';
-                    let tunnelPath = '/api/v2/monitor/vpn/ipsec';
-                    let getTunnel = await this.getRequest(tunnelPath, {});
-                    let getTunnelInfo = await this.getRequest(tunnelInfoPath, {
+                    const tunnelInfoPath = '/api/v2/monitor/system/available-interfaces';
+                    const tunnelPath = '/api/v2/monitor/vpn/ipsec';
+                    const getTunnel = await this.getRequest(tunnelPath, {});
+                    const getTunnelInfo = await this.getRequest(tunnelInfoPath, {
                         datasource: true,
                         start: 0,
                         count: 10000,
@@ -759,7 +812,7 @@ class OpenConfigInterpreter {
                         getTunnel,
                         getTunnelInfo
                     );
-                    console.log('Returned Model' + JSON.stringify(model));
+                    console.log(`Returned Model${JSON.stringify(model)}`);
                     return model;
                 default:
                     console.log('path not in cases, attempting to lookup.');
@@ -775,10 +828,15 @@ class OpenConfigInterpreter {
                         interface_name: interfaceNameValue
                     });
                     monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                    model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
-                    console.log('Returned Model' + JSON.stringify(model));
+                    model = interfaceClassObj.interface(
+                        pathArray,
+                        getRequest,
+                        monitorInterface,
+                        getUptimeRequest
+                    );
+                    console.log(`Returned Model${JSON.stringify(model)}`);
                     return model;
-                //return { val: 'Path Not implmented yet.' };
+                // return { val: 'Path Not implmented yet.' };
             }
         } else if (pathArray[0] === 'local-routes') {
             console.log('LocalRoutes');
@@ -806,13 +864,13 @@ class OpenConfigInterpreter {
                     data = '';
 
                     getRequest = await this.getRequest(localRoutePath, data);
-                    for (let i of getRequest?.results) {
+                    for (const i of getRequest?.results) {
                         if (i.dst === prefixName) {
                             model = interfaceClassObj.localRoutes(pathArray, getRequest);
                             return model;
                         }
                     }
-                    console.log('Local Routes' + JSON.stringify(getRequest));
+                    console.log(`Local Routes${JSON.stringify(getRequest)}`);
                     model = interfaceClassObj.localRoutes(pathArray, getRequest);
                     return model;
 

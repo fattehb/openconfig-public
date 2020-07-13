@@ -12,10 +12,10 @@ export class YangModel {
         tunnelData?,
         tunnelInterfaceInfo?
     ) {
-        //lookup = {"interfaces/interface":
+        // lookup = {"interfaces/interface":
         // ["endpointa", "endpointb"],
-        //"interfaces/interface/subinterfaces/subinterface/status": ["endpoint c"]}
-        let readOnlyData = {
+        // "interfaces/interface/subinterfaces/subinterface/status": ["endpoint c"]}
+        const readOnlyData = {
             interfaces: {
                 interface: {
                     state: {
@@ -24,39 +24,39 @@ export class YangModel {
                         mtu: getRequest?.results[0]?.mtu,
                         'loopback-mode': false,
                         description: getRequest?.results[0]?.description,
-                        enabled: getRequest?.results[0]?.status === 'up' ? true : false,
+                        enabled: getRequest?.results[0]?.status === 'up',
                         ifindex: getRequest?.results[0]?.status?.vindex,
                         'admin-status': getRequest?.results[0]?.status === 'up' ? 'UP' : 'DOWN',
                         'oper-status': getRequest?.results[0]?.status === 'up' ? 'UP' : 'DOWN',
-                        //logical TODO:look into this.
+                        // logical TODO:look into this.
                         counters: {
                             'in-octets': monitorInterface?.rx_bytes,
                             'in-pkts': monitorInterface?.rx_packets,
-                            //"in-unicast-pkts":
-                            //"in-broadcast-pkts":rw oc-ip:ip        -> ../config/ip
-                            //"in-multicast-pkts":
-                            //"in-discards":
+                            // "in-unicast-pkts":
+                            // "in-broadcast-pkts":rw oc-ip:ip        -> ../config/ip
+                            // "in-multicast-pkts":
+                            // "in-discards":
                             'in-errors': monitorInterface?.rx_errors,
-                            //"in-unknown-protos":
-                            //"in-fcs-errors":
+                            // "in-unknown-protos":
+                            // "in-fcs-errors":
                             'out-octets': monitorInterface?.tx_bytes,
                             'out-pkts': monitorInterface?.tx_packets,
-                            //"out-unicast-pkts":
-                            //"out-broadcast-pkts":
-                            //"out-multicast-pkts":
-                            //"out-discards":
+                            // "out-unicast-pkts":
+                            // "out-broadcast-pkts":
+                            // "out-multicast-pkts":
+                            // "out-discards":
                             'out-errors': monitorInterface?.tx_errors,
-                            //"carrier-transitions":
+                            // "carrier-transitions":
                             'last-clear': getUptimeRequest?.results?.utc_last_reboot
                         }
                     },
                     subinterfaces: {
                         subinterface: {
-                            index: 0, //assume 0 for now
+                            index: 0, // assume 0 for now
                             config: {
                                 index: 0,
                                 description: getRequest?.results[0]?.description,
-                                enabled: getRequest?.results[0]?.status === 'up' ? true : false
+                                enabled: getRequest?.results[0]?.status === 'up'
                             },
                             state: {
                                 name: getRequest?.results[0]?.name,
@@ -64,36 +64,38 @@ export class YangModel {
                                 mtu: getRequest?.results[0]?.mtu,
                                 'loopback-mode': false,
                                 description: getRequest?.results[0]?.description,
-                                enabled: getRequest?.results[0]?.status === 'up' ? true : false,
+                                enabled: getRequest?.results[0]?.status === 'up',
                                 ifindex: getRequest?.results[0]?.status?.vindex,
-                                'admin-status': getRequest?.results[0]?.status === 'up' ? 'UP' : 'DOWN',
-                                'oper-status': getRequest?.results[0]?.status === 'up' ? 'UP' : 'DOWN',
-                                //logical TODO:look into this.
+                                'admin-status':
+                                    getRequest?.results[0]?.status === 'up' ? 'UP' : 'DOWN',
+                                'oper-status':
+                                    getRequest?.results[0]?.status === 'up' ? 'UP' : 'DOWN',
+                                // logical TODO:look into this.
                                 counters: {
                                     'in-octets': monitorInterface?.rx_bytes,
                                     'in-pkts': monitorInterface?.rx_packets,
-                                    //"in-unicast-pkts":
-                                    //"in-broadcast-pkts":
-                                    //"in-multicast-pkts":
-                                    //"in-discards":
+                                    // "in-unicast-pkts":
+                                    // "in-broadcast-pkts":
+                                    // "in-multicast-pkts":
+                                    // "in-discards":
                                     'in-errors': monitorInterface?.rx_errors,
-                                    //"in-unknown-protos":
-                                    //"in-fcs-errors":
+                                    // "in-unknown-protos":
+                                    // "in-fcs-errors":
                                     'out-octets': monitorInterface?.tx_bytes,
                                     'out-pkts': monitorInterface?.tx_packets,
-                                    //"out-unicast-pkts":
-                                    //"out-broadcast-pkts":
-                                    //"out-multicast-pkts":
-                                    //"out-discards":
+                                    // "out-unicast-pkts":
+                                    // "out-broadcast-pkts":
+                                    // "out-multicast-pkts":
+                                    // "out-discards":
                                     'out-errors': monitorInterface?.tx_errors,
-                                    //"carrier-transitions":
+                                    // "carrier-transitions":
                                     'last-clear': getUptimeRequest?.results?.utc_last_reboot
                                 }
                             },
                             ipv4: {
                                 addresses: {
                                     address: {
-                                        ip: monitorInterface?.ip, //TODO: grab from getrequest instead?
+                                        ip: monitorInterface?.ip, // TODO: grab from getrequest instead?
                                         config: {
                                             ip: monitorInterface?.ip,
                                             'prefix-length': monitorInterface?.mask
@@ -103,42 +105,56 @@ export class YangModel {
                                             'prefix-length': monitorInterface?.mask,
                                             origin: getRequest?.results[0]?.mode
                                         },
-                                        //TODO: vrrp: this.assembleVrrpData(getRequest)
+                                        // TODO: vrrp: this.assembleVrrpData(getRequest)
                                         vrrp: {
                                             'vrrp-group': {
-                                                'virtual-router-id': getRequest?.results[0]?.vrrp[0]?.vrid,
+                                                'virtual-router-id':
+                                                    getRequest?.results[0]?.vrrp[0]?.vrid,
                                                 config: {
-                                                    'virtual-router-id': getRequest?.results[0]?.vrrp[0]?.vrid,
-                                                    'virtual-address': getRequest?.results[0]?.vrrp[0]?.vrip,
-                                                    priority: getRequest?.results[0]?.vrrp[0]?.priority,
-                                                    preempt: getRequest?.results[0]?.vrrp[0]?.preempt,
-                                                    //preempt-delay:
+                                                    'virtual-router-id':
+                                                        getRequest?.results[0]?.vrrp[0]?.vrid,
+                                                    'virtual-address':
+                                                        getRequest?.results[0]?.vrrp[0]?.vrip,
+                                                    priority:
+                                                        getRequest?.results[0]?.vrrp[0]?.priority,
+                                                    preempt:
+                                                        getRequest?.results[0]?.vrrp[0]?.preempt,
+                                                    // preempt-delay:
                                                     'accept-mode': getRequest?.results[0]?.vrrp[0],
-                                                    'advertisement-interval': getRequest?.results[0]?.vrrp[0]
+                                                    'advertisement-interval':
+                                                        getRequest?.results[0]?.vrrp[0]
                                                 },
                                                 state: {
-                                                    'virtual-router-id': getRequest?.results[0]?.vrrp[0]?.vrid,
-                                                    'virtual-address': getRequest?.results[0]?.vrrp[0]?.vrip,
-                                                    priority: getRequest?.results[0]?.vrrp[0]?.priority,
-                                                    preempt: getRequest?.results[0]?.vrrp[0]?.preempt,
-                                                    //preempt-delay:
-                                                    //TODO: add logic for vrrp
-                                                    'accept-mode': getRequest?.results[0]?.vrrp?.[0], // .['accept-mode'],
-                                                    'advertisement-interval': getRequest?.results[0]?.vrrp[0], //['adv-interval'],
-                                                    'current-priority': getRequest?.results[0]?.vrrp[0], //['vrdst-priority'],
+                                                    'virtual-router-id':
+                                                        getRequest?.results[0]?.vrrp[0]?.vrid,
+                                                    'virtual-address':
+                                                        getRequest?.results[0]?.vrrp[0]?.vrip,
+                                                    priority:
+                                                        getRequest?.results[0]?.vrrp[0]?.priority,
+                                                    preempt:
+                                                        getRequest?.results[0]?.vrrp[0]?.preempt,
+                                                    // preempt-delay:
+                                                    // TODO: add logic for vrrp
+                                                    'accept-mode':
+                                                        getRequest?.results[0]?.vrrp?.[0], // .['accept-mode'],
+                                                    'advertisement-interval':
+                                                        getRequest?.results[0]?.vrrp[0], // ['adv-interval'],
+                                                    'current-priority':
+                                                        getRequest?.results[0]?.vrrp[0], // ['vrdst-priority'],
                                                     'interface-tracking': {
                                                         config: {
-                                                            'track-interface': getRequest?.results[0]?.name
-                                                            //'priority-decrement':
+                                                            'track-interface':
+                                                                getRequest?.results[0]?.name
+                                                            // 'priority-decrement':
                                                         }
                                                     }
                                                 }
                                             }
                                         }
                                     }
-                                }, //'proxy-arp': {
-                                //TODO
-                                //},
+                                }, // 'proxy-arp': {
+                                // TODO
+                                // },
                                 neighbors: {
                                     neighbor: [
                                         {
@@ -149,27 +165,29 @@ export class YangModel {
                                         }
                                     ]
                                 },
-                                //unnumbered:{},
+                                // unnumbered:{},
                                 config: {
-                                    enabled: getRequest?.results[0]?.status === 'up' ? 'UP' : 'DOWN', // assume interface status
+                                    enabled:
+                                        getRequest?.results[0]?.status === 'up' ? 'UP' : 'DOWN', // assume interface status
                                     mtu: getRequest?.results[0]?.mtu,
-                                    'dhcp-client': getRequest?.results[0]?.mode === 'dhcp' ? true : false
+                                    'dhcp-client': getRequest?.results[0]?.mode === 'dhcp'
                                 },
                                 state: {
-                                    enabled: getRequest?.results[0]?.status === 'up' ? 'UP' : 'DOWN', // assume interface status
+                                    enabled:
+                                        getRequest?.results[0]?.status === 'up' ? 'UP' : 'DOWN', // assume interface status
                                     mtu: getRequest?.results[0]?.mtu,
-                                    'dhcp-client': getRequest?.results[0]?.mode === 'dhcp' ? true : false,
+                                    'dhcp-client': getRequest?.results[0]?.mode === 'dhcp',
                                     counters: {
                                         'in-octets': monitorInterface?.rx_bytes,
                                         'in-pkts': monitorInterface?.rx_packets,
-                                        //in-forwarded-pkts?
-                                        //in-forwarded-octets?
+                                        // in-forwarded-pkts?
+                                        // in-forwarded-octets?
                                         'in-error-pkts': monitorInterface?.rx_errors,
 
                                         'out-octets': monitorInterface?.tx_bytes,
                                         'out-pkts': monitorInterface?.tx_packets,
-                                        //out-forwarded-pkts?
-                                        //out-forwarded-octets?
+                                        // out-forwarded-pkts?
+                                        // out-forwarded-octets?
                                         'out-errors-pkts': monitorInterface?.tx_errors
                                     }
                                 }
@@ -177,7 +195,7 @@ export class YangModel {
 
                             ipv6: {
                                 addresses: {
-                                    //TODO: should be a list
+                                    // TODO: should be a list
                                     address: {
                                         ip: getRequest?.results[0]?.ipv6?.['ip6-address'],
                                         config: {
@@ -188,7 +206,10 @@ export class YangModel {
                                             ip: getRequest?.results[0]?.ipv6?.['ip6-address'],
                                             'prefix-length': monitorInterface?.mask,
                                             origin: getRequest?.results[0]?.ipv6?.['ip6-mode'],
-                                            status: getRequest?.results[0]?.status === 'up' ? 'UP' : 'DOWN'
+                                            status:
+                                                getRequest?.results[0]?.status === 'up'
+                                                    ? 'UP'
+                                                    : 'DOWN'
                                         },
                                         vrrp: {
                                             'vrrp-group': [{}]
@@ -198,37 +219,39 @@ export class YangModel {
                                 'router-advertisement': {
                                     config: {}
                                 },
-                                //ipv6 config
+                                // ipv6 config
                                 config: {
-                                    enabled: getRequest?.results[0]?.status === 'up' ? 'UP' : 'DOWN',
+                                    enabled:
+                                        getRequest?.results[0]?.status === 'up' ? 'UP' : 'DOWN',
                                     mtu: getRequest?.results[0]?.ipv6?.['ip6-link-mtu'],
-                                    //'dup-addr-detect-transmits'
-                                    'dchp-client': getRequest?.results[0]?.ipv6?.['ip6-mode'] === 'dhcp' ? true : false
+                                    // 'dup-addr-detect-transmits'
+                                    'dchp-client':
+                                        getRequest?.results[0]?.ipv6?.['ip6-mode'] === 'dhcp'
                                 },
                                 counters: {
-                                    //TODO: verify ipv6 counters. Or any other possible sources.
+                                    // TODO: verify ipv6 counters. Or any other possible sources.
                                     'in-octets': monitorInterface?.rx_bytes,
                                     'in-pkts': monitorInterface?.rx_packets,
-                                    //in-forwarded-pkts?
-                                    //in-forwarded-octets?
+                                    // in-forwarded-pkts?
+                                    // in-forwarded-octets?
                                     'in-error-pkts': monitorInterface?.rx_errors,
                                     'out-octets': monitorInterface?.tx_bytes,
                                     'out-pkts': monitorInterface?.tx_packets,
-                                    //out-forwarded-pkts?
-                                    //out-forwarded-octets?
+                                    // out-forwarded-pkts?
+                                    // out-forwarded-octets?
                                     'out-errors-pkts': monitorInterface?.tx_errors
                                 },
-                                //TODO: cehck how to enable this on fortigate
+                                // TODO: cehck how to enable this on fortigate
                                 autoconf: {
                                     config: {
-                                        //'create-global-addresses'
-                                        //'create-temporary-addresses?',
+                                        // 'create-global-addresses'
+                                        // 'create-temporary-addresses?',
                                         // 'temporary-valid-lifetime'
                                         // 'temporary-preferred-lifetime'
                                     },
                                     state: {
-                                        //'create-global-addresses'
-                                        //'create-temporary-addresses?',
+                                        // 'create-global-addresses'
+                                        // 'create-temporary-addresses?',
                                         // 'temporary-valid-lifetime'
                                         // 'temporary-preferred-lifetime'
                                     }
@@ -241,19 +264,19 @@ export class YangModel {
                     ethernet: {
                         config: {
                             'mac-address': getRequest?.results[0]?.macaddr,
-                            //'auto-negotiate': TODO:
+                            // 'auto-negotiate': TODO:
                             'duplex-mode': monitorInterface?.duplex === 1 ? 'FULL' : 'HALF',
                             'port-speed': monitorInterface?.speed
-                            //'enable-flow-control?',
-                            //oc-lag:aggregate-id?
+                            // 'enable-flow-control?',
+                            // oc-lag:aggregate-id?
                         },
                         state: {
                             'mac-address': getRequest?.results[0]?.macaddr,
-                            //'auto-negotiate': TODO:
+                            // 'auto-negotiate': TODO:
                             'duplex-mode': monitorInterface?.duplex === 1 ? 'FULL' : 'HALF',
                             'port-speed': monitorInterface?.speed
-                            //'enable-flow-control?',
-                            //oc-lag:aggregate-id?
+                            // 'enable-flow-control?',
+                            // oc-lag:aggregate-id?
                         },
                         dot1x: {
                             config: {}
@@ -265,14 +288,14 @@ export class YangModel {
             }
         };
         // Get data based on array supplied by path[]
-        let getObj = path.reduce((x, y) => x[y], readOnlyData);
+        const getObj = path.reduce((x, y) => x[y], readOnlyData);
 
-        console.log('path object' + JSON.stringify(getObj));
+        console.log(`path object${JSON.stringify(getObj)}`);
 
         return getObj;
     }
     public localRoutes(path, getRequest?) {
-        let localRoutesReturn = {
+        const localRoutesReturn = {
             'local-routes': {
                 config: {},
                 state: {},
@@ -280,12 +303,12 @@ export class YangModel {
                     static: {
                         config: {
                             prefix: getRequest?.results[0]?.dst,
-                            //'set-tag':
+                            // 'set-tag':
                             description: getRequest?.results[0]?.comment
                         },
                         state: {
                             prefix: getRequest?.results[0]?.dst,
-                            //'set-tag':
+                            // 'set-tag':
                             description: getRequest?.results[0]?.comment
                         },
                         'next-hops': {
@@ -295,13 +318,13 @@ export class YangModel {
                                     index: getRequest?.results[0]?.['seq-num'],
                                     'next-hop': getRequest?.results[0]?.gateway,
                                     metric: getRequest?.results[0]?.distance,
-                                    rescurse: (getRequest?.results[0]?.device).length > 0 ? false : true
+                                    rescurse: !((getRequest?.results[0]?.device).length > 0)
                                 },
                                 state: {
                                     index: getRequest?.results[0]?.['seq-num'],
                                     'next-hop': getRequest?.results[0]?.gateway,
                                     metric: getRequest?.results[0]?.distance,
-                                    rescurse: (getRequest?.results[0]?.device).length > 0 ? false : true
+                                    rescurse: !((getRequest?.results[0]?.device).length > 0)
                                 }
                             }
                         }
@@ -313,27 +336,27 @@ export class YangModel {
                     },
                     config: {
                         prefix: getRequest?.results[0]?.dst,
-                        discard: getRequest?.results[0]?.blackhole === 'disable' ? false : true,
-                        //set-tag,
+                        discard: getRequest?.results[0]?.blackhole !== 'disable',
+                        // set-tag,
                         description: getRequest?.results[0]?.comment
                     },
                     state: {
                         prefix: getRequest?.results[0]?.dst,
-                        discard: getRequest?.results[0]?.blackhole === 'disable' ? false : true,
-                        //set-tag,
+                        discard: getRequest?.results[0]?.blackhole !== 'disable',
+                        // set-tag,
                         description: getRequest?.results[0]?.comment
                     }
                 }
             }
         };
-        let getObj = path.reduce((x, y) => x[y], localRoutesReturn);
+        const getObj = path.reduce((x, y) => x[y], localRoutesReturn);
 
-        console.log('path object' + JSON.stringify(getObj));
+        console.log(`path object${JSON.stringify(getObj)}`);
 
         return getObj;
     }
     public assembleProxyArpData(proxyData) {
-        //TODO:
+        // TODO:
     }
     public assembleAggregationData(getRequest): void | Object {
         if (
@@ -342,7 +365,7 @@ export class YangModel {
             getRequest.results[0].type &&
             getRequest.results[0].type === 'aggregate'
         ) {
-            let dataReturn = {
+            const dataReturn = {
                 config: {
                     'lag-type': getRequest?.results[0]['lacp-mode'],
                     'min-links': getRequest?.results[0]['min-links']
@@ -351,16 +374,21 @@ export class YangModel {
                     'lag-type': getRequest?.results[0]['lacp-mode'],
                     'min-links': getRequest?.results[0]['min-links'],
                     member: getRequest?.results[0]['member']
-                    //'lag-speed':getRequest?.results[0]['lacp-speed'],
+                    // 'lag-speed':getRequest?.results[0]['lacp-speed'],
                 }
             };
             return dataReturn;
             //
-        } else return;
+        } else {
+            return;
+        }
     }
     public assembleVrrpData(getRequest) {
-        if (getRequest?.results[0]?.vrrp[0]?.vrid && (getRequest?.results[0]?.vrrp[0]?.vrid).length > 0) {
-            let vrrpModelData = {
+        if (
+            getRequest?.results[0]?.vrrp[0]?.vrid &&
+            (getRequest?.results[0]?.vrrp[0]?.vrid).length > 0
+        ) {
+            const vrrpModelData = {
                 vrrp: {
                     'vrrp-group': {
                         'virtual-router-id': getRequest?.results[0]?.vrrp[0]?.vrid,
@@ -369,7 +397,7 @@ export class YangModel {
                             'virtual-address': getRequest?.results[0]?.vrrp[0]?.vrip,
                             priority: getRequest?.results[0]?.vrrp[0]?.priority,
                             preempt: getRequest?.results[0]?.vrrp[0]?.preempt,
-                            //preempt-delay:
+                            // preempt-delay:
                             'accept-mode': getRequest?.results[0]?.vrrp[0],
                             'advertisement-interval': getRequest?.results[0]?.vrrp[0]
                         },
@@ -378,15 +406,15 @@ export class YangModel {
                             'virtual-address': getRequest?.results[0]?.vrrp[0]?.vrip,
                             priority: getRequest?.results[0]?.vrrp[0]?.priority,
                             preempt: getRequest?.results[0]?.vrrp[0]?.preempt,
-                            //preempt-delay:
-                            //TODO: add logic for vrrp
+                            // preempt-delay:
+                            // TODO: add logic for vrrp
                             'accept-mode': getRequest?.results[0]?.vrrp?.[0], // .['accept-mode'],
-                            'advertisement-interval': getRequest?.results[0]?.vrrp[0], //['adv-interval'],
-                            'current-priority': getRequest?.results[0]?.vrrp[0], //['vrdst-priority'],
+                            'advertisement-interval': getRequest?.results[0]?.vrrp[0], // ['adv-interval'],
+                            'current-priority': getRequest?.results[0]?.vrrp[0], // ['vrdst-priority'],
                             'interface-tracking': {
                                 config: {
                                     // 'track-interface': getRequest?.results[0]?.name
-                                    //'priority-decrement':
+                                    // 'priority-decrement':
                                 }
                             }
                         }
@@ -401,8 +429,8 @@ export class YangModel {
     public assembleTunnelData(tunnelMonitorInfo, tunnelInterfaceInfo): void | Object {
         let dataReturn;
         if (tunnelMonitorInfo && tunnelInterfaceInfo) {
-            for (let i of tunnelInterfaceInfo.results) {
-                //TODO accept interfaceID from name data.
+            for (const i of tunnelInterfaceInfo.results) {
+                // TODO accept interfaceID from name data.
                 if (i.type === 'tunnel' && i.tunnel_interface === 'port1') {
                     dataReturn = {
                         tunnel: {
@@ -412,7 +440,7 @@ export class YangModel {
                                 ttl: 'todo',
                                 'gre-key': 'todo'
                             },
-                            //TODO tie state info with proper vpn tunnel
+                            // TODO tie state info with proper vpn tunnel
                             state: {
                                 ipv4: {
                                     addresses: {
@@ -423,15 +451,17 @@ export class YangModel {
                                         state: {
                                             counters: {
                                                 // 'in-octets': monitorInterface?.rx_bytes,
-                                                'in-pkts': tunnelMonitorInfo?.results[0]?.incoming_bytes,
-                                                //in-forwarded-pkts?
-                                                //in-forwarded-octets?
-                                                /// 'in-error-pkts': monitorInterface?.rx_errors,
+                                                'in-pkts':
+                                                    tunnelMonitorInfo?.results[0]?.incoming_bytes,
+                                                // in-forwarded-pkts?
+                                                // in-forwarded-octets?
+                                                // / 'in-error-pkts': monitorInterface?.rx_errors,
                                                 // 'out-octets': monitorInterface?.tx_bytes,
-                                                'out-pkts': tunnelMonitorInfo?.results[0]?.outgoing_bytes
-                                                //out-forwarded-pkts?
-                                                //out-forwarded-octets?
-                                                //'out-errors-pkts': monitorInterface?.tx_errors
+                                                'out-pkts':
+                                                    tunnelMonitorInfo?.results[0]?.outgoing_bytes
+                                                // out-forwarded-pkts?
+                                                // out-forwarded-octets?
+                                                // 'out-errors-pkts': monitorInterface?.tx_errors
                                             }
                                         }
                                     }
@@ -444,6 +474,8 @@ export class YangModel {
 
             return dataReturn;
             //
-        } else return;
+        } else {
+            return;
+        }
     }
 }
