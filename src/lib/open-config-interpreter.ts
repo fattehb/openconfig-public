@@ -1,5 +1,6 @@
 import { log } from '../util/log';
 import { FortiGateAPIRequests } from './fortigate-api-requests';
+import { YangModel } from './yang-model-interface';
 import * as path from 'path';
 // TODO: fix yang-js imports
 const Yang = require('yang-js');
@@ -334,7 +335,7 @@ class OpenConfigInterpreter {
                     getRequest = await this.getRequest(fullPath, data);
 
                     // Convert Data
-                    configValues = openconfig_interfaces_model.eval(
+                    configValues = this._openconfigInterfacesModel.eval(
                         {
                             'openconfig-interfaces:interfaces': {
                                 interface: [
@@ -361,7 +362,7 @@ class OpenConfigInterpreter {
                     getRequest = await this.getRequest(fullPath, data);
 
                     // Convert Data
-                    const getNameConfig = openconfig_interfaces_model.eval(
+                    const getNameConfig = this._openconfigInterfacesModel.eval(
                         {
                             'openconfig-interfaces:interfaces': {
                                 interface: [
