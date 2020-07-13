@@ -408,8 +408,6 @@ export class YangModel {
     ): void | Object {
         //TODO:Error handling and fix conditional chaining of model construction.
         let dataReturn;
-        console.log('Tunnel interface info yang model ' + JSON.stringify(tunnelInterfaceInfo));
-        console.log('tunnelMonitorInfo ' + tunnelMonitorInfo);
         if (tunnelMonitorInfo && tunnelInterfaceInfo) {
             for (let i of tunnelInterfaceInfo.results) {
                 //TODO accept interfaceID from name data.
@@ -417,7 +415,7 @@ export class YangModel {
                     dataReturn = {
                         tunnel: {
                             config: {
-                                src: greTunnelInfo?.results[0]['local-gw'], //'todo',
+                                src: greTunnelInfo?.results[0]['local-gw'],
                                 dst: greTunnelInfo?.results[0]['remote-gw'],
                                 //ttl: greTunnelInfo?.results[0]['keepalive-interval'],
                                 //Deviations TODO:add to yang model.

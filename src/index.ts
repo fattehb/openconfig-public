@@ -246,31 +246,7 @@ export class OpenConfigInterpreter {
                     return postRequest;
                 case 'interfaces/interface/tunnel/':
                     cmdbPath = '/api/v2/cmdb/system/gre-tunnel/';
-                    // {
-                    //     "name": "string",
-                    //     "interface": "string",
-                    //     "ip-version": "4",
-                    //     "remote-gw6": "2001:0db8:5b96:0000:0000:426f:8e17:642a",
-                    //     "local-gw6": "2001:0db8:5b96:0000:0000:426f:8e17:642a",
-                    //     "remote-gw": "198.51.100.42",
-                    //     "local-gw": "198.51.100.42",
-                    //     "sequence-number-transmission": "disable",
-                    //     "sequence-number-reception": "disable",
-                    //     "checksum-transmission": "disable",
-                    //     "checksum-reception": "disable",
-                    //     "key-outbound": 0,
-                    //     "key-inbound": 0,
-                    //     "dscp-copying": "disable",
-                    //     "diffservcode": "string",
-                    //     "keepalive-interval": 0,
-                    //     "keepalive-failtimes": 0
-                    //   }
-                    //                   config system gre-tunnel
-                    // edit "toFG2"
-                    //     set interface "port1"
-                    //     set local-gw 198.51.100.1
-                    //     set remote-gw 203.0.113.2
-                    // next
+
                     postValue = JSON.parse(postValue); //Convert from buffer.
 
                     fullPath = cmdbPath;
@@ -812,10 +788,9 @@ export class OpenConfigInterpreter {
                     uptimePath = '/api/v2/monitor/web-ui/state';
                     let proxyarp = '/api/v2/cmdb/system/proxy-arp';
                     let vpnTunnel = '/api/v2/monitor/vpn/ipsec';
-                    let tunnelTest = '/api/v2/cmdb/system/gre-tunnel';
-                    // let getProxyArp = await this.getRequest(proxyarp, {});
+
                     let neighborsPath = '/api/v2/monitor/network/lldp/neighbors';
-                    //let getNeighbors = await this.getRequest(neighborsPath, {});
+
                     let arpPath = '/api/v2/monitor/system/available-interfaces';
                     let dot1xPath = '/api/v2/cmdb/switch-controller.security-policy/802-1X';
                     let getArp = await this.getRequest(arpPath, {
@@ -824,22 +799,17 @@ export class OpenConfigInterpreter {
                         count: 10000,
                         id: 0
                     });
-                    let getTunnelTest = await this.getRequest(tunnelTest, {});
-                    console.log('*** Tunnel test gre ' + JSON.stringify(getTunnelTest));
                     let getVPNTunnel = await this.getRequest(vpnTunnel, {});
                     getUptimeRequest = await this.getRequest(uptimePath, '');
                     fullPath = cmdbPath + interfaceNameValue;
                     data = '';
                     getRequest = await this.getRequest(fullPath, data);
-                    getMontiorRequest = await this.getRequest(monitorPath, {
-                        //interface_name: interfaceNameValue
-                    });
+                    getMontiorRequest = await this.getRequest(monitorPath, {});
                     let dot1xPathRequest = await this.getRequest(dot1xPath, data);
 
                     monitorInterface = getMontiorRequest.results[interfaceNameValue];
                     console.log('IPV4 call getArp' + JSON.stringify(getArp));
-                    //console.log('IPV4 call getProxyArp' + JSON.stringify(getProxyArp));
-                    //console.log('IPV4 call getNeighbors' + JSON.stringify(getNeighbors));
+
                     console.log('IPV4 call getMontiorRequest' + JSON.stringify(getMontiorRequest));
                     console.log('IPV4 call getRequest' + JSON.stringify(getRequest));
                     console.log('IPV4 call dot1xPathRequest' + JSON.stringify(dot1xPathRequest));
