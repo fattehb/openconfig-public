@@ -1,6 +1,7 @@
 import axios from 'axios';
 import https from 'https';
 import { truncateSync } from 'fs';
+import { log } from '../util/log';
 
 export class YangModel {
     public interface(
@@ -290,7 +291,7 @@ export class YangModel {
         // Get data based on array supplied by path[]
         const getObj = path.reduce((x, y) => x[y], readOnlyData);
 
-        console.log(`path object${JSON.stringify(getObj)}`);
+        log.info(`path object${JSON.stringify(getObj)}`);
 
         return getObj;
     }
@@ -351,7 +352,7 @@ export class YangModel {
         };
         const getObj = path.reduce((x, y) => x[y], localRoutesReturn);
 
-        console.log(`path object${JSON.stringify(getObj)}`);
+        log.info(`path object${JSON.stringify(getObj)}`);
 
         return getObj;
     }

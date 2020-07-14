@@ -81,7 +81,7 @@ class OpenConfigInterpreter {
                     for (const i of acceptedInterfaceTypes) {
                         if (postValue && postValue.toLowerCase().includes(i)) {
                             interfaceType = i;
-                            console.log(`Assuming interface type: ${i}`);
+                            log.info(`Assuming interface type: ${i}`);
                         }
                     }
                     if (interfaceType === null) {
@@ -90,7 +90,7 @@ class OpenConfigInterpreter {
                     Could not determine interfacetype from name ${interfaceNameValue}. Current accepted types are:
                     physical loopback
                     `);
-                        console.error(err.message);
+                        log.error(err.message);
                         throw err;
                     }
 
@@ -101,7 +101,7 @@ class OpenConfigInterpreter {
                         vdom: 'root',
                         type: interfaceType
                     };
-                    console.log(`Post Data${JSON.stringify(data)}`);
+                    log.info(`Post Data${JSON.stringify(data)}`);
                     postRequest = await this.postConfig(fullPath, data);
 
                     return postRequest;
@@ -204,7 +204,7 @@ class OpenConfigInterpreter {
 
                     return postRequest;
                 default:
-                    console.log('Path not implmented yet');
+                    log.info('Path not implmented yet');
                     return -1;
             }
         } else if (pathArray[0] === 'local-routes') {
@@ -222,7 +222,7 @@ class OpenConfigInterpreter {
 
                     return postRequest;
                 default:
-                    console.log('Path not implmented yet');
+                    log.info('Path not implmented yet');
                     return -1;
 
                 // Return evaluated config.
@@ -272,11 +272,11 @@ class OpenConfigInterpreter {
 
         let localRoutePath;
         let prefixName; // local-routing
-        console.log(`Path Request${JSON.stringify(pathRequest)}`);
+        log.info(`Path Request${JSON.stringify(pathRequest)}`);
         // Subscribe commands shows as:
         // for (const item of pathRequest.path.elem) {
         if (pathRequest?.subscription) {
-            console.log('Subscription Request sent');
+            log.info('Subscription Request sent');
             // Subscription path contains an array at elem but not at path.
             for (const item of pathRequest.subscription[0].path.elem) {
                 // TODO: account for multiple names etc:
@@ -287,7 +287,7 @@ class OpenConfigInterpreter {
                 // TODO: search for value, verify.
                 subInterfaceIndexValue = pathRequest?.subscription[0]?.path?.elem[3]?.key?.name;
                 // TODO account for multiple names etc:
-                console.log(`item ${JSON.stringify(item)}`);
+                log.info(`item ${JSON.stringify(item)}`);
             }
         } else {
             // Assume Get request, if not sub.
@@ -297,14 +297,14 @@ class OpenConfigInterpreter {
                 pathArray.push(item.name);
                 interfaceNameValue = pathRequest?.path[0]?.elem[1]?.key?.name;
                 prefixName = pathRequest?.path[0]?.elem[2]?.key?.prefix;
-                console.log(`PRefix name ${prefixName}`);
+                log.info(`PRefix name ${prefixName}`);
                 // TODO account for multiple names etc.
-                console.log(`item ${JSON.stringify(item)}`);
+                log.info(`item ${JSON.stringify(item)}`);
             }
         }
-        console.log(pathArray[0]);
+        log.info(pathArray[0]);
         if (pathArray[0] === 'interfaces') {
-            console.log(`Constructed RestAPI Path: ${fullPath}`);
+            log.info(`Constructed RestAPI Path: ${fullPath}`);
             switch (fullPath) {
                 case 'interfaces/interface/':
                     cmdbPath = '/api/v2/cmdb/system/interface/';
@@ -539,7 +539,7 @@ class OpenConfigInterpreter {
                     );
                     return model;
                 case 'interfaces/interface/hold-time/':
-                    console.log('Path not implmented yet');
+                    log.info('Path not implmented yet');
                     break;
 
                 // Subinterfaces
@@ -581,7 +581,7 @@ class OpenConfigInterpreter {
                         monitorInterface,
                         getUptimeRequest
                     );
-                    console.log(`Path Request from config: ${JSON.stringify(getRequest)}`);
+                    log.info(`Path Request from config: ${JSON.stringify(getRequest)}`);
                     return model;
                 case 'interfaces/interface/subinterfaces/subinterface/config/name/':
                     cmdbPath = '/api/v2/cmdb/system/interface/';
@@ -730,10 +730,10 @@ class OpenConfigInterpreter {
                     return model;
 
                 case 'interfaces/interface/subinterfaces/subinterface/subinterfaces/':
-                    console.log('subinterfaces not implmented yet');
+                    log.info('subinterfaces not implmented yet');
                     break;
                 case 'interfaces/interface/subinterfaces/subinterface/hold-time/':
-                    console.log('Path not implmented yet');
+                    log.info('Path not implmented yet');
                     break;
                 // TODO: respond as oc-ip:address
                 case 'interfaces/interface/subinterfaces/subinterface/ipv4/addresses/':
@@ -766,13 +766,13 @@ class OpenConfigInterpreter {
                     const dot1xPathRequest = await this.getRequest(dot1xPath, data);
 
                     monitorInterface = getMontiorRequest.results[interfaceNameValue];
-                    console.log(`IPV4 call getArp${JSON.stringify(getArp)}`);
-                    // console.log('IPV4 call getProxyArp' + JSON.stringify(getProxyArp));
-                    // console.log('IPV4 call getNeighbors' + JSON.stringify(getNeighbors));
-                    console.log(`IPV4 call getMontiorRequest${JSON.stringify(getMontiorRequest)}`);
-                    console.log(`IPV4 call getRequest${JSON.stringify(getRequest)}`);
-                    console.log(`IPV4 call dot1xPathRequest${JSON.stringify(dot1xPathRequest)}`);
-                    console.log(`IPV4 call vpn${JSON.stringify(getVPNTunnel)}`);
+                    log.info(`IPV4 call getArp${JSON.stringify(getArp)}`);
+                    // log.info('IPV4 call getProxyArp' + JSON.stringify(getProxyArp));
+                    // log.info('IPV4 call getNeighbors' + JSON.stringify(getNeighbors));
+                    log.info(`IPV4 call getMontiorRequest${JSON.stringify(getMontiorRequest)}`);
+                    log.info(`IPV4 call getRequest${JSON.stringify(getRequest)}`);
+                    log.info(`IPV4 call dot1xPathRequest${JSON.stringify(dot1xPathRequest)}`);
+                    log.info(`IPV4 call vpn${JSON.stringify(getVPNTunnel)}`);
 
                     model = interfaceClassObj.interface(
                         pathArray,
@@ -782,7 +782,7 @@ class OpenConfigInterpreter {
                     );
                     return model;
                 case 'interfaces/interface/tunnel/':
-                    console.log('path not in cases, attempting to lookup.');
+                    log.info('path not in cases, attempting to lookup.');
                     cmdbPath = '/api/v2/cmdb/system/interface/';
                     monitorPath = '/api/v2/monitor/system/interface/';
                     uptimePath = '/api/v2/monitor/web-ui/state';
@@ -813,10 +813,10 @@ class OpenConfigInterpreter {
                         getTunnel,
                         getTunnelInfo
                     );
-                    console.log(`Returned Model${JSON.stringify(model)}`);
+                    log.info(`Returned Model${JSON.stringify(model)}`);
                     return model;
                 default:
-                    console.log('path not in cases, attempting to lookup.');
+                    log.info('path not in cases, attempting to lookup.');
                     cmdbPath = '/api/v2/cmdb/system/interface/';
                     monitorPath = '/api/v2/monitor/system/interface/';
                     uptimePath = '/api/v2/monitor/web-ui/state';
@@ -835,12 +835,12 @@ class OpenConfigInterpreter {
                         monitorInterface,
                         getUptimeRequest
                     );
-                    console.log(`Returned Model${JSON.stringify(model)}`);
+                    log.info(`Returned Model${JSON.stringify(model)}`);
                     return model;
                 // return { val: 'Path Not implmented yet.' };
             }
         } else if (pathArray[0] === 'local-routes') {
-            console.log('LocalRoutes');
+            log.info('LocalRoutes');
             switch (fullPath) {
                 case 'local-routes':
                     localRoutePath = '/api/v2/cmdb/router/static/';
@@ -871,7 +871,7 @@ class OpenConfigInterpreter {
                             return model;
                         }
                     }
-                    console.log(`Local Routes${JSON.stringify(getRequest)}`);
+                    log.info(`Local Routes${JSON.stringify(getRequest)}`);
                     model = interfaceClassObj.localRoutes(pathArray, getRequest);
                     return model;
 

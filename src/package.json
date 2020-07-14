@@ -29,7 +29,7 @@
         "test": "nyc mocha --recursive './test/mocha/*.js'",
         "start": "npx ts-node ./index.ts start",
         "lint": "eslint . --ext .ts",
-        "fix": "eslint . --fix --ext .ts"
+        "prettify": "eslint . --fix --ext .ts"
     },
     "author": "",
     "license": "ISC",
