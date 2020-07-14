@@ -7,11 +7,7 @@ import * as CryptoJS from 'crypto-js';
 import { OpenConfigInterpreter } from './open-config-interpreter';
 
 export class GnmiProtoHandlers {
-
-    constructor(
-        private readonly _fortigateApiKey: string,
-        private readonly _fortigateIp: string
-    ) {}
+    constructor(private readonly _fortigateApiKey: string, private readonly _fortigateIp: string) {}
 
     // Naming Based of gnmi.proto
     public async Set(setRequest, callback) {

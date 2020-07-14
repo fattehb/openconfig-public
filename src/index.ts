@@ -5,7 +5,7 @@ import { CertificateManager } from './lib/cert-manager';
 import { log } from './util/log';
 import * as path from 'path';
 import * as yargs from 'yargs';
-import { Argv } from "yargs";
+import { Argv } from 'yargs';
 
 const DEFAULT_LISTEN_ON_PORT = 6031;
 
@@ -39,9 +39,9 @@ interface CliArgs {
     port: number;
 }
 
-const getCliArgs = () : CliArgs => {
+const getCliArgs = (): CliArgs => {
     const argv = yargs
-        .command('start', "Start the server.", (yargs: Argv) => {
+        .command('start', 'Start the server.', (yargs: Argv) => {
             return yargs
                 .usage('Usage: $0 --fortigate-api-key <key> --fortigate-ip <ip>')
                 .option('fortigate-api-key', {
@@ -67,13 +67,8 @@ const getCliArgs = () : CliArgs => {
                     default: false
                 });
         })
-        .strict()
-        .argv;
-    const {
-        fortigateApiKey,
-        fortigateIp,
-        port
-    } : any = argv;
+        .strict().argv;
+    const { fortigateApiKey, fortigateIp, port }: any = argv;
 
     if (!argv._ || !argv._[0]) {
         yargs.showHelp();
@@ -82,7 +77,7 @@ const getCliArgs = () : CliArgs => {
 
     if (argv.verbose) {
         // TODO: support verbose mode, a placeholder here
-        log.info("Verbose mode on.");
+        log.info('Verbose mode on.');
     }
 
     return {
