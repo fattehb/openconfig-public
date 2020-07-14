@@ -4,13 +4,15 @@ const grpc = require('grpc');
 const protoLoader = require('@grpc/proto-loader');
 const PROTO_PATH = `${__dirname}/gnmi/proto/gnmi/gnmi.proto`;
 import * as CryptoJS from 'crypto-js';
-// TODO: seperate openConfigInterpreter logic.
-// TODO:ENV vars should be passed to gnmiProtoHandler
 import { OpenConfigInterpreter } from './open-config-interpreter';
-const { FORTIGATE_API_KEY, FORTIGATE_IP } = process.env;
 
 export class GnmiProtoHandlers {
-    // TODO:clean up constructors.
+
+    constructor(
+        private readonly _fortigateApiKey: string,
+        private readonly _fortigateIp: string
+    ) {}
+
     // Naming Based of gnmi.proto
     public async Set(setRequest, callback) {
         log.info('set request prefix: ', JSON.stringify(setRequest));
@@ -26,8 +28,8 @@ export class GnmiProtoHandlers {
         // Named to correspond to GNMI specs.
         const setConfig = new OpenConfigInterpreter(
             OpenConfigInterpreter.DEFAULT_POLL_INTERVAL,
-            FORTIGATE_IP,
-            FORTIGATE_API_KEY
+            this._fortigateIp,
+            this._fortigateApiKey
         );
         const setModel = setConfig.setModelRequests(setRequest.request);
         log.info(`SetModel Return${JSON.stringify(setModel)}`);
@@ -55,8 +57,8 @@ export class GnmiProtoHandlers {
         // TODO: fix implmentation of openconfig interpreter
         const getConfig = new OpenConfigInterpreter(
             OpenConfigInterpreter.DEFAULT_POLL_INTERVAL,
-            FORTIGATE_IP,
-            FORTIGATE_API_KEY
+            this._fortigateIp,
+            this._fortigateApiKey
         );
 
         log.info(`GetRequest ${JSON.stringify(GetRequest)}`);
@@ -94,8 +96,8 @@ export class GnmiProtoHandlers {
     public Subscribe(call, callback) {
         const getConfig = new OpenConfigInterpreter(
             OpenConfigInterpreter.DEFAULT_POLL_INTERVAL,
-            FORTIGATE_IP,
-            FORTIGATE_API_KEY
+            this._fortigateIp,
+            this._fortigateApiKey
         );
         call.on('data', async function (note) {
             let fullPath = '';

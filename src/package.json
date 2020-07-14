@@ -14,6 +14,7 @@
     },
     "devDependencies": {
         "@types/node": "^13.13.4",
+        "@types/yargs": "^15.0.5",
         "@typescript-eslint/eslint-plugin": "^3.3.0",
         "@typescript-eslint/parser": "^3.3.0",
         "crypto-js": "^4.0.0",
@@ -26,7 +27,7 @@
     "scripts": {
         "build": "",
         "test": "nyc mocha --recursive './test/mocha/*.js'",
-        "start": "npx ts-node ./index.ts",
+        "start": "npx ts-node ./index.ts start",
         "lint": "eslint . --ext .ts",
         "fix": "eslint . --fix --ext .ts"
     },
