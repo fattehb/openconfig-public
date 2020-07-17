@@ -369,7 +369,7 @@ export class OpenConfigInterpreter {
                     pathRequest.subscription[0].path.elem[1] &&
                     pathRequest.subscription[0].path.elem[1].key
                 ) {
-                    interfaceNameValue = pathRequest?.subscription[0]?.path?.elem[1].key?.name;
+                    interfaceNameValue = pathRequest.subscription[0].path.elem[1].key.name;
                 }
 
                 prefixName = pathRequest?.subscription[0]?.path?.elem[2]?.key?.prefix;
