@@ -361,16 +361,8 @@ export class OpenConfigInterpreter {
                 //TODO: account for multiple names etc:
                 fullPath = fullPath + item.name + '/';
                 pathArray.push(item.name);
-                if (
-                    pathRequest &&
-                    pathRequest.subscription &&
-                    pathRequest.subscription[0].path &&
-                    pathRequest.subscription[0].path.elem &&
-                    pathRequest.subscription[0].path.elem[1] &&
-                    pathRequest.subscription[0].path.elem[1].key
-                ) {
-                    interfaceNameValue = pathRequest.subscription[0].path.elem[1].key.name;
-                }
+
+                interfaceNameValue = pathRequest?.subscription[0]?.path?.elem[1]?.key?.name;
 
                 prefixName = pathRequest?.subscription[0]?.path?.elem[2]?.key?.prefix;
                 //TODO: search for value, verify.
