@@ -10,7 +10,9 @@ export class YangModel {
         getUptimeRequest?,
         proxyArpData?,
         tunnelData?,
-        tunnelInterfaceInfo?
+        tunnelInterfaceInfo?,
+        greTunnelInfo?,
+        interfaceNameValue?
     ) {
         //lookup = {"interfaces/interface":
         // ["endpointa", "endpointb"],
@@ -260,7 +262,7 @@ export class YangModel {
                         }
                     },
 
-                    tunnel: this.assembleTunnelData(tunnelData, tunnelInterfaceInfo)
+                    tunnel: this.assembleTunnelData(tunnelData, tunnelInterfaceInfo, interfaceNameValue, greTunnelInfo)
                 }
             }
         };
@@ -294,14 +296,14 @@ export class YangModel {
                                 config: {
                                     index: getRequest?.results[0]?.['seq-num'],
                                     'next-hop': getRequest?.results[0]?.gateway,
-                                    metric: getRequest?.results[0]?.distance,
-                                    rescurse: (getRequest?.results[0]?.device).length > 0 ? false : true
+                                    metric: getRequest?.results[0]?.distance
+                                    //rescurse: (getRequest?.results[0]?.device).length > 0 ? false : true
                                 },
                                 state: {
                                     index: getRequest?.results[0]?.['seq-num'],
                                     'next-hop': getRequest?.results[0]?.gateway,
-                                    metric: getRequest?.results[0]?.distance,
-                                    rescurse: (getRequest?.results[0]?.device).length > 0 ? false : true
+                                    metric: getRequest?.results[0]?.distance
+                                    //rescurse: (getRequest?.results[0]?.device).length > 0 ? false : true
                                 }
                             }
                         }
@@ -398,19 +400,27 @@ export class YangModel {
             return '';
         }
     }
-    public assembleTunnelData(tunnelMonitorInfo, tunnelInterfaceInfo): void | Object {
+    public assembleTunnelData(
+        tunnelMonitorInfo,
+        tunnelInterfaceInfo,
+        interfaceNameValue,
+        greTunnelInfo?
+    ): void | Object {
+        //TODO:Error handling and fix conditional chaining of model construction.
         let dataReturn;
         if (tunnelMonitorInfo && tunnelInterfaceInfo) {
             for (let i of tunnelInterfaceInfo.results) {
                 //TODO accept interfaceID from name data.
-                if (i.type === 'tunnel' && i.tunnel_interface === 'port1') {
+                if (i.type === 'tunnel' && i.tunnel_interface === interfaceNameValue) {
                     dataReturn = {
                         tunnel: {
                             config: {
-                                src: 'todo',
-                                dst: 'todo',
-                                ttl: 'todo',
-                                'gre-key': 'todo'
+                                src: greTunnelInfo?.results[0]['local-gw'],
+                                dst: greTunnelInfo?.results[0]['remote-gw'],
+                                //ttl: greTunnelInfo?.results[0]['keepalive-interval'],
+                                //Deviations TODO:add to yang model.
+                                'gre-key-in': greTunnelInfo?.results[0]['key-inbound'],
+                                'gre-key-out': greTunnelInfo?.results[0]['key-outbound']
                             },
                             //TODO tie state info with proper vpn tunnel
                             state: {
@@ -421,14 +431,15 @@ export class YangModel {
                                         },
                                         config: {},
                                         state: {
+                                            enabled: i.status === 'up' ? true : false,
                                             counters: {
                                                 // 'in-octets': monitorInterface?.rx_bytes,
-                                                'in-pkts': tunnelMonitorInfo?.results[0]?.incoming_bytes,
+                                                //'in-pkts': tunnelMonitorInfo?.results[0]?.incoming_bytes,
                                                 //in-forwarded-pkts?
                                                 //in-forwarded-octets?
                                                 /// 'in-error-pkts': monitorInterface?.rx_errors,
                                                 // 'out-octets': monitorInterface?.tx_bytes,
-                                                'out-pkts': tunnelMonitorInfo?.results[0]?.outgoing_bytes
+                                                //'out-pkts': tunnelMonitorInfo?.results[0]?.outgoing_bytes
                                                 //out-forwarded-pkts?
                                                 //out-forwarded-octets?
                                                 //'out-errors-pkts': monitorInterface?.tx_errors

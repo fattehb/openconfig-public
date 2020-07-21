@@ -82,8 +82,7 @@ export class OpenConfigInterpreter {
         let pathArray = [];
         console.log('pathrequest for set ' + JSON.stringify(pathRequest));
         if (pathRequest?.update) {
-            interfaceNameValue = pathRequest.update[0].path.elem[1].key.name;
-
+            interfaceNameValue = pathRequest?.update?.[0]?.path?.elem[1]?.key?.name;
             // Value presented by the gNMI
             // Value wil be int_val/string_val etc. Can easily tell which, by grabbing value
             typeValue = pathRequest.update[0].val.value;
@@ -245,20 +244,58 @@ export class OpenConfigInterpreter {
                     postRequest = await this.putConfig(fullPath, data);
 
                     return postRequest;
+                case 'interfaces/interface/tunnel/':
+                    cmdbPath = '/api/v2/cmdb/system/gre-tunnel/';
+
+                    postValue = JSON.parse(postValue); //Convert from buffer.
+
+                    fullPath = cmdbPath;
+                    data = {
+                        name: postValue.tunnel.config.name,
+                        interface: postValue.tunnel.config.interface,
+                        'remote-gw': postValue.tunnel.config.dst,
+                        'local-gw': postValue.tunnel.config.src
+                    };
+
+                    postRequest = await this.postConfig(fullPath, data);
+
+                    return postRequest;
                 default:
                     console.log('Path not implmented yet');
                     return -1;
             }
         } else if (pathArray[0] === 'local-routes') {
             switch (fullPath) {
-                //TODO:
+                //TODO: proper JSON handling.
                 case 'local-routes/static-routes/':
                     cmdbPath = '/api/v2/cmdb/router/static/';
-
                     fullPath = cmdbPath;
+                    postValue = JSON.parse(postValue); //Convert from buffer.
+
                     data = {
-                        status: 'enable'
+                        dst: postValue['static-routes']?.static?.config?.prefix,
+                        gateway: postValue['static-routes']?.static['next-hops']['next-hop']?.config['next-hop'],
+                        device: 'port4', //TODO:will need to provide an agument
+                        distance: postValue['static-routes']?.static['next-hops']['next-hop']?.config?.metric,
+                        vdom: 'root' //Assume root vdom for time being.
                     };
+                    console.log('data: ' + JSON.stringify(data));
+
+                    postRequest = await this.postConfig(fullPath, data);
+
+                    return postRequest;
+                case 'local-routes/local-aggregates/':
+                    cmdbPath = '/api/v2/cmdb/router/static/';
+                    fullPath = cmdbPath;
+                    postValue = JSON.parse(postValue); //Convert from buffer.
+                    //aggregate-address
+                    data = {
+                        dst: postValue['local-aggregates']?.aggregate?.config?.prefix,
+                        blackhole:
+                            postValue['local-aggregates']?.aggregate?.config?.discard === true ? 'enable' : 'disable',
+                        vdom: 'root' //Assume root vdom for time being.
+                    };
+                    console.log('data: ' + JSON.stringify(data));
 
                     postRequest = await this.postConfig(fullPath, data);
 
@@ -324,7 +361,9 @@ export class OpenConfigInterpreter {
                 //TODO: account for multiple names etc:
                 fullPath = fullPath + item.name + '/';
                 pathArray.push(item.name);
-                interfaceNameValue = pathRequest?.subscription[0]?.path?.elem[1].key.name;
+
+                interfaceNameValue = pathRequest?.subscription[0]?.path?.elem[1]?.key?.name;
+
                 prefixName = pathRequest?.subscription[0]?.path?.elem[2]?.key?.prefix;
                 //TODO: search for value, verify.
                 subInterfaceIndexValue = pathRequest?.subscription[0]?.path?.elem[3]?.key?.name;
@@ -741,9 +780,9 @@ export class OpenConfigInterpreter {
                     uptimePath = '/api/v2/monitor/web-ui/state';
                     let proxyarp = '/api/v2/cmdb/system/proxy-arp';
                     let vpnTunnel = '/api/v2/monitor/vpn/ipsec';
-                    // let getProxyArp = await this.getRequest(proxyarp, {});
+
                     let neighborsPath = '/api/v2/monitor/network/lldp/neighbors';
-                    //let getNeighbors = await this.getRequest(neighborsPath, {});
+
                     let arpPath = '/api/v2/monitor/system/available-interfaces';
                     let dot1xPath = '/api/v2/cmdb/switch-controller.security-policy/802-1X';
                     let getArp = await this.getRequest(arpPath, {
@@ -757,15 +796,12 @@ export class OpenConfigInterpreter {
                     fullPath = cmdbPath + interfaceNameValue;
                     data = '';
                     getRequest = await this.getRequest(fullPath, data);
-                    getMontiorRequest = await this.getRequest(monitorPath, {
-                        //interface_name: interfaceNameValue
-                    });
+                    getMontiorRequest = await this.getRequest(monitorPath, {});
                     let dot1xPathRequest = await this.getRequest(dot1xPath, data);
 
                     monitorInterface = getMontiorRequest.results[interfaceNameValue];
                     console.log('IPV4 call getArp' + JSON.stringify(getArp));
-                    //console.log('IPV4 call getProxyArp' + JSON.stringify(getProxyArp));
-                    //console.log('IPV4 call getNeighbors' + JSON.stringify(getNeighbors));
+
                     console.log('IPV4 call getMontiorRequest' + JSON.stringify(getMontiorRequest));
                     console.log('IPV4 call getRequest' + JSON.stringify(getRequest));
                     console.log('IPV4 call dot1xPathRequest' + JSON.stringify(dot1xPathRequest));
@@ -774,20 +810,16 @@ export class OpenConfigInterpreter {
                     model = interfaceClassObj.interface(pathArray, getRequest, monitorInterface, getUptimeRequest);
                     return model;
                 case 'interfaces/interface/tunnel/':
-                    console.log('path not in cases, attempting to lookup.');
                     cmdbPath = '/api/v2/cmdb/system/interface/';
                     monitorPath = '/api/v2/monitor/system/interface/';
                     uptimePath = '/api/v2/monitor/web-ui/state';
                     let tunnelInfoPath = '/api/v2/monitor/system/available-interfaces';
+                    //TODO: call only if gre?
+                    let greTunnelInfoPath = '/api/v2/cmdb/system/gre-tunnel';
                     let tunnelPath = '/api/v2/monitor/vpn/ipsec';
                     let getTunnel = await this.getRequest(tunnelPath, {});
-                    let getTunnelInfo = await this.getRequest(tunnelInfoPath, {
-                        datasource: true,
-                        start: 0,
-                        count: 10000,
-                        id: 0
-                    });
-
+                    let getTunnelInfo = await this.getRequest(tunnelInfoPath, {});
+                    let getGreTunnelInfo = await this.getRequest(greTunnelInfoPath, {});
                     getUptimeRequest = await this.getRequest(uptimePath, '');
                     fullPath = cmdbPath + interfaceNameValue;
                     data = '';
@@ -803,7 +835,9 @@ export class OpenConfigInterpreter {
                         getUptimeRequest,
                         null,
                         getTunnel,
-                        getTunnelInfo
+                        getTunnelInfo,
+                        getGreTunnelInfo,
+                        interfaceNameValue
                     );
                     console.log('Returned Model' + JSON.stringify(model));
                     return model;
