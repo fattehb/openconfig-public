@@ -25,7 +25,7 @@ class Log {
     private _logMode: string;
 
     constructor() {
-        this.filename = `log_${Date.now()}`;
+        this.filename = `log_${Date.now().toString()}`;
         this._logContents = '';
     }
 
@@ -157,4 +157,4 @@ class Log {
 
 const log = new Log();
 
-export { log };
+export { log, LOG_MODE };

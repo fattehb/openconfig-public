@@ -28,6 +28,8 @@
         "build": "",
         "test": "nyc mocha --recursive './test/mocha/*.js'",
         "start": "npx ts-node ./index.ts start",
+        "config": "npx ts-node ./index.ts config",
+        "help": "npx ts-node ./index.ts --help",
         "lint": "eslint . --ext .ts",
         "prettify": "eslint . --fix --ext .ts"
     },

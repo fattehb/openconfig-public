@@ -3,11 +3,12 @@ const Yang = require('yang-js');
 import { GnmiProtoHandlers } from './lib/gnmi-proto-handlers';
 import { CertificateManager } from './lib/cert-manager';
 import { log } from './util/log';
+import * as process from 'process';
 import * as path from 'path';
+import * as fs from 'fs';
 import * as yargs from 'yargs';
 import { Argv } from 'yargs';
-
-const DEFAULT_LISTEN_ON_PORT = 6031;
+import { argParams, ServerConfig, configServer } from './util/config-server';
 
 const grpc = require('grpc');
 const protoLoader = require('@grpc/proto-loader');
@@ -33,17 +34,33 @@ const openconfig_extensions_model = Yang.import(
     `${__dirname}/openconfig/release/models/openconfig-extensions.yang`
 );
 
-interface CliArgs {
-    fortigateApiKey: string;
-    fortigateIp: string;
-    port: number;
-}
+const getServerConfig = (): ServerConfig | null => {
+    try {
+        const serverConfig = JSON.parse(fs.readFileSync(argParams.CONFIG_FILE).toString());
 
-const getCliArgs = (): CliArgs => {
+        if (serverConfig.verbose) {
+            // TODO: support verbose mode, a placeholder here
+            log.info('Verbose mode on.');
+        }
+
+        return serverConfig;
+    } catch (e) {
+        log.error(e);
+        log.error(`Unable to parse config file: ${argParams.CONFIG_FILE}.`);
+        return null;
+    }
+};
+
+const registerArgs = (): void => {
     const argv = yargs
         .command('start', 'Start the server.', (yargs: Argv) => {
+            return yargs.usage('Usage: npm start');
+        })
+        .command('config', 'Configure the arguments for server start script.', (yargs: Argv) => {
             return yargs
-                .usage('Usage: $0 --fortigate-api-key <key> --fortigate-ip <ip>')
+                .usage(
+                    'Usage: npm run-script config -- --fortigate-api-key <key> --fortigate-ip <ip>'
+                )
                 .option('fortigate-api-key', {
                     describe: 'FortiGate API key.',
                     type: 'string',
@@ -56,42 +73,64 @@ const getCliArgs = (): CliArgs => {
                 })
                 .option('port', {
                     alias: 'p',
-                    describe: 'Port to listen on.',
-                    default: DEFAULT_LISTEN_ON_PORT,
+                    describe: 'Port for the server script to listen on.',
+                    default: 6031,
                     type: 'number'
                 })
                 .option('verbose', {
                     alias: 'v',
-                    describe: 'Verbose mode.',
+                    describe: 'Verbose debug mode.',
                     type: 'boolean',
                     default: false
                 });
         })
-        .strict().argv;
-    const { fortigateApiKey, fortigateIp, port }: any = argv;
+        .help('help')
+        .strict(true).argv;
 
-    if (!argv._ || !argv._[0]) {
+    if (!argv._ || !argv._[0] || !['start', 'config'].includes(argv._[0])) {
         yargs.showHelp();
-        throw new Error('Missing CLI args.');
+        log.error('You need at least one command before moving on.');
+        process.exit(1);
     }
 
-    if (argv.verbose) {
-        // TODO: support verbose mode, a placeholder here
-        log.info('Verbose mode on.');
+    if (argv._[0] === 'config') {
+        const { fortigateApiKey, fortigateIp, port, verbose }: any = argv;
+        if (!fortigateApiKey || !fortigateIp || port == null || verbose == null) {
+            yargs.showHelp();
+            log.error('Missing server config arguments.');
+            process.exit(1);
+        }
+        configServer({
+            fortigateApiKey,
+            fortigateIp,
+            port,
+            verbose
+        });
+        process.exit(0);
     }
 
-    return {
-        fortigateApiKey,
-        fortigateIp,
-        port
-    };
+    if (!fs.existsSync(argParams.CONFIG_FILE)) {
+        yargs.showHelp();
+        log.error(`Missing server script config file: ${argParams.CONFIG_FILE}.`);
+        log.error('Run "npm run-script config" first.');
+        process.exit(1);
+    }
 };
 
 exports.main = async (context, req, res): Promise<void> => {
-    const argv = getCliArgs();
+    registerArgs();
+
+    const config = getServerConfig();
+    if (!config) {
+        process.exit(1);
+    }
+
+    const serverUrl = `0.0.0.0:${config.port}`;
 
     log.init();
     log.info('Function Started');
+    log.info(`FortiGate Address: ${config.fortigateIp}`);
+    log.info(`Server Address: ${serverUrl}`);
     const yangImportList = [
         `${__dirname}/openconfig/third_party/ietf/ietf-interfaces.yang`,
         `${__dirname}/openconfig/release/models/types/openconfig-yang-types.yang`,
@@ -101,7 +140,7 @@ exports.main = async (context, req, res): Promise<void> => {
     ];
 
     // gRPC
-    const gRPCServiceHandler = new GnmiProtoHandlers(argv.fortigateApiKey, argv.fortigateIp);
+    const gRPCServiceHandler = new GnmiProtoHandlers(config.fortigateApiKey, config.fortigateIp);
     const server = new grpc.Server();
 
     // var stub = new helloworld.Greeter('myservice.example.com', ssl_creds);
@@ -114,9 +153,9 @@ exports.main = async (context, req, res): Promise<void> => {
     });
     // can call with customized cert files
     const certManager = new CertificateManager();
-    server.bind(`0.0.0.0:${argv.port}`, certManager.createServerCredentials());
+    server.bind(serverUrl, certManager.createServerCredentials());
     server.start();
-    log.info(`Server listening to traffic on ${argv.port}`);
+    log.info(`Server listening to traffic on ${config.port}`);
 };
 
 if (module === require.main) {
