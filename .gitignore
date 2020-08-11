@@ -1,7 +1,0 @@
-# From development
-tags
-*.swp
-src/node_modules
-certs/
-.vscode/
-server_config.json
